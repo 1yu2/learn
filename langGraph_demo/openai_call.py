@@ -1,4 +1,13 @@
 from typing import List, Dict, Any
+import os
+
+# 设置环境变量，确保不走代理
+os.environ['HTTP_PROXY'] = ''
+os.environ['HTTPS_PROXY'] = ''
+os.environ['http_proxy'] = ''
+os.environ['https_proxy'] = ''
+os.environ['NO_PROXY'] = '*'
+
 from config import model_configs
 import openai
 from openai import OpenAI

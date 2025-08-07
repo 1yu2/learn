@@ -1,6 +1,14 @@
 # 使用langGraph搭建聊天机器人
 import sys
 import os
+
+# 设置环境变量，确保不走代理
+os.environ['HTTP_PROXY'] = ''
+os.environ['HTTPS_PROXY'] = ''
+os.environ['http_proxy'] = ''
+os.environ['https_proxy'] = ''
+os.environ['NO_PROXY'] = '*'
+
 # Add the parent directory to the Python path so we can import config
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from typing import Annotated
