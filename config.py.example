@@ -1,0 +1,7 @@
+# 自定义的模型配置
+model_configs = {
+    "base_url": "http://192.168.10.60:11434/v1/",  # 模型服务的 URL
+    "model": 'gpt-oss:20b',  # 模型名称
+    "api_key": "",  # API 密钥
+    "model_provider": "openai"  # 使用 OpenAI 兼容协议的提供商（例如本地 OpenAI 兼容服务）
+}
