@@ -22,3 +22,5 @@ rad.json
 TestResults.xml
 config.py
 __pycache__/
+.venv/
+.idea/
