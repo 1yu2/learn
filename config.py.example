@@ -1,7 +1,29 @@
 # 自定义的模型配置
+# model_configs = {
+#     "base_url": "http://192.168.10.60:11434/v1/",  # 模型服务的 URL
+#     "model": 'gpt-oss:20b',  # 模型名称
+#     "api_key": "289751f29159b7d25dadc86c858fa48405bba6740acb57154b00494c0308ed95",  # API 密钥
+#     "model_provider": "openai"  # 使用 OpenAI 兼容协议的提供商（例如本地 OpenAI 兼容服务）
+# }
+
+# 自定义的模型配置轨迹流动
+# model_configs = {
+#     "base_url": "https://api.siliconflow.cn/v1/",  # 模型服务的 URL
+#     "model": 'Qwen/Qwen2.5-72B-Instruct',  # 模型名称
+#     "api_key": "sk-fyumwpodkrbbcmbmgnbkhkshnntolcmdihhgtgvsjwnbirhy",  # API 密钥
+#     "model_provider": "openai"  # 使用 OpenAI 兼容协议的提供商（例如本地 OpenAI 兼容服务）
+# }
+
+langfuse_configs = {
+    "public_key":"pk-lf-df66914f-c364-4cad-b4fb-801be1f00e0e",
+    "secret_key":"sk-lf-26e92544-434f-4b22-b34c-eb09265fced0",
+    "host":"http://192.168.10.60:11300",
+}
 model_configs = {
-    "base_url": "http://192.168.10.60:11434/v1/",  # 模型服务的 URL
-    "model": 'gpt-oss:20b',  # 模型名称
-    "api_key": "",  # API 密钥
+    "base_url": "http://192.168.0.130:31665/v1",  # 模型服务的 URL
+    "model": 'Qwen/Qwen3-30B-A3B-Instruct-2507',  # 模型名称
+    "api_key": "vllm",  # API 密钥
     "model_provider": "openai"  # 使用 OpenAI 兼容协议的提供商（例如本地 OpenAI 兼容服务）
 }
+
+TAVILY_API_KEY = "tvly-dev-xx"

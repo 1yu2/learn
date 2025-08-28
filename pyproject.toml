@@ -12,6 +12,9 @@ dependencies = [
     "langchain>=0.3.27",
     "langchain-community>=0.3.27",
     "langchain-openai>=0.3.28",
+    "langchain-tavily>=0.2.11",
+    "langfuse>=3.3.2",
     "langgraph>=0.6.3",
     "openai>=1.99.1",
+    "pandas>=2.3.2",
 ]
