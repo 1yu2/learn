@@ -141,7 +141,7 @@ while True:
         print("👋 Goodbye!")
         break
 
-    # 流式执行
+    # 流式执行 ceshi
     events = graph.stream({"messages": [("user", user_input)]})
     final_assistant_message = None
 
