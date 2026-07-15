@@ -6,8 +6,15 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
   "agno",
+  "ddgs>=9.14.4",
+  "duckduckgo-search>=8.1.1",
+  "lancedb>=0.34.0",
+  "mcp>=1.28.1",
   "openai",
+  "pypdf>=6.14.2",
   "python-dotenv",
+  "tantivy>=0.26.0",
+  "yfinance>=1.5.1",
 ]
 
 [project.optional-dependencies]

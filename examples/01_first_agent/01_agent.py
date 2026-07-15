@@ -16,7 +16,7 @@ if not api_key:
 agent = Agent(
     name="助手",
     model=DeepSeek(
-        id=getenv("AGNO_MODEL_ID", "deepseek-v4-flash"),
+        id=getenv("DEEPSEEK_MODEL_ID", "deepseek-v4-flash"),
         api_key=api_key,
     ),
     description="一个友好的AI助手",
