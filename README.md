@@ -4,12 +4,12 @@
 
 ## 官方入口
 
-- 官方文档: https://docs.agentscope.io/
-- 2.0.3 文档首页: https://docs.agentscope.io/versions/2.0.3/en
-- Quickstart: https://docs.agentscope.io/versions/2.0.3/en/quickstart
-- GitHub: https://github.com/agentscope-ai/agentscope
-- PyPI: https://pypi.org/project/agentscope/
-- 文档索引: https://docs.agentscope.io/llms.txt
+- 官方文档: [https://docs.agentscope.io/](https://docs.agentscope.io/)
+- 2.0.3 文档首页: [https://docs.agentscope.io/versions/2.0.3/en](https://docs.agentscope.io/versions/2.0.3/en)
+- Quickstart: [https://docs.agentscope.io/versions/2.0.3/en/quickstart](https://docs.agentscope.io/versions/2.0.3/en/quickstart)
+- GitHub: [https://github.com/agentscope-ai/agentscope](https://github.com/agentscope-ai/agentscope)
+- PyPI: [https://pypi.org/project/agentscope/](https://pypi.org/project/agentscope/)
+- 文档索引: [https://docs.agentscope.io/llms.txt](https://docs.agentscope.io/llms.txt)
 
 ## 学习目标
 
@@ -75,6 +75,24 @@ uv pip install agentscope\[full\]
 uv pip install agentscope\[rag\]
 ```
 
+## 环境与验收
+
+- [环境配置](docs/environment.md)：`.env.example`、DashScope 默认配置、provider 切换和安全说明。
+- [学习路线与掌握度验收](docs/learning-roadmap.md)：十阶段任务、学习证据和进入项目的门槛。
+- [AgentScope 八股题库](docs/interview-question-bank.md)：按主题自测、追问和评分规则。
+- [个人研究 Agent 完成度评估](docs/capstone-evaluation.md)：项目方向、MVP、风险测试和 100 分评分表。
+
+模型示例和最终项目统一复用 `agentscope_learn.Settings`，由它处理环境变量、`.env`
+
+回退、凭据校验、模型名和脱敏摘要：
+
+```python
+from agentscope_learn import Settings
+
+settings = Settings.from_env()
+print(settings.redacted_summary())
+```
+
 本仓库当前的离线验证命令：
 
 ```bash
@@ -95,8 +113,8 @@ print(agentscope.__version__)
 
 官方文档：
 
-- Quickstart: https://docs.agentscope.io/versions/2.0.3/en/quickstart
-- AgentScope 2.0 介绍: https://docs.agentscope.io/versions/2.0.3/en
+- Quickstart: [https://docs.agentscope.io/versions/2.0.3/en/quickstart](https://docs.agentscope.io/versions/2.0.3/en/quickstart)
+- AgentScope 2.0 介绍: [https://docs.agentscope.io/versions/2.0.3/en](https://docs.agentscope.io/versions/2.0.3/en)
 
 学习重点：
 
@@ -120,7 +138,7 @@ print(agentscope.__version__)
 
 官方文档：
 
-- Message & Event: https://docs.agentscope.io/versions/2.0.3/en/building-blocks/message-and-event
+- Message &amp; Event: [https://docs.agentscope.io/versions/2.0.3/en/building-blocks/message-and-event](https://docs.agentscope.io/versions/2.0.3/en/building-blocks/message-and-event)
 
 学习重点：
 
@@ -144,7 +162,7 @@ print(agentscope.__version__)
 
 官方文档：
 
-- Model: https://docs.agentscope.io/versions/2.0.3/en/building-blocks/model
+- Model: [https://docs.agentscope.io/versions/2.0.3/en/building-blocks/model](https://docs.agentscope.io/versions/2.0.3/en/building-blocks/model)
 
 学习重点：
 
@@ -169,8 +187,8 @@ print(agentscope.__version__)
 
 官方文档：
 
-- Agent: https://docs.agentscope.io/versions/2.0.3/en/building-blocks/agent
-- Tool: https://docs.agentscope.io/versions/2.0.3/en/building-blocks/tool
+- Agent: [https://docs.agentscope.io/versions/2.0.3/en/building-blocks/agent](https://docs.agentscope.io/versions/2.0.3/en/building-blocks/agent)
+- Tool: [https://docs.agentscope.io/versions/2.0.3/en/building-blocks/tool](https://docs.agentscope.io/versions/2.0.3/en/building-blocks/tool)
 
 学习重点：
 
@@ -197,8 +215,8 @@ print(agentscope.__version__)
 
 官方文档：
 
-- Permission System: https://docs.agentscope.io/versions/2.0.3/en/building-blocks/permission-system
-- Agent Human-in-the-Loop: https://docs.agentscope.io/versions/2.0.3/en/building-blocks/agent
+- Permission System: [https://docs.agentscope.io/versions/2.0.3/en/building-blocks/permission-system](https://docs.agentscope.io/versions/2.0.3/en/building-blocks/permission-system)
+- Agent Human-in-the-Loop: [https://docs.agentscope.io/versions/2.0.3/en/building-blocks/agent](https://docs.agentscope.io/versions/2.0.3/en/building-blocks/agent)
 
 学习重点：
 
@@ -223,7 +241,7 @@ print(agentscope.__version__)
 
 官方文档：
 
-- Plan: https://docs.agentscope.io/versions/2.0.3/en/building-blocks/plan
+- Plan: [https://docs.agentscope.io/versions/2.0.3/en/building-blocks/plan](https://docs.agentscope.io/versions/2.0.3/en/building-blocks/plan)
 
 学习重点：
 
@@ -248,9 +266,9 @@ print(agentscope.__version__)
 
 官方文档：
 
-- Context: https://docs.agentscope.io/versions/2.0.3/en/building-blocks/context
-- Workspace: https://docs.agentscope.io/versions/2.0.3/en/building-blocks/workspace
-- Middleware: https://docs.agentscope.io/versions/2.0.3/en/building-blocks/middleware
+- Context: [https://docs.agentscope.io/versions/2.0.3/en/building-blocks/context](https://docs.agentscope.io/versions/2.0.3/en/building-blocks/context)
+- Workspace: [https://docs.agentscope.io/versions/2.0.3/en/building-blocks/workspace](https://docs.agentscope.io/versions/2.0.3/en/building-blocks/workspace)
+- Middleware: [https://docs.agentscope.io/versions/2.0.3/en/building-blocks/middleware](https://docs.agentscope.io/versions/2.0.3/en/building-blocks/middleware)
 
 学习重点：
 
@@ -276,9 +294,9 @@ print(agentscope.__version__)
 
 官方文档：
 
-- RAG: https://docs.agentscope.io/versions/2.0.3/en/building-blocks/rag
-- Long-Term Memory: https://docs.agentscope.io/versions/2.0.3/en/building-blocks/long-term-memory
-- RAG Service: https://docs.agentscope.io/versions/2.0.3/en/deploy/rag
+- RAG: [https://docs.agentscope.io/versions/2.0.3/en/building-blocks/rag](https://docs.agentscope.io/versions/2.0.3/en/building-blocks/rag)
+- Long-Term Memory: [https://docs.agentscope.io/versions/2.0.3/en/building-blocks/long-term-memory](https://docs.agentscope.io/versions/2.0.3/en/building-blocks/long-term-memory)
+- RAG Service: [https://docs.agentscope.io/versions/2.0.3/en/deploy/rag](https://docs.agentscope.io/versions/2.0.3/en/deploy/rag)
 
 学习重点：
 
@@ -304,9 +322,9 @@ print(agentscope.__version__)
 
 官方文档：
 
-- Agent Service Architecture: https://docs.agentscope.io/versions/2.0.3/en/deploy/agent-service
-- Agent Team: https://docs.agentscope.io/versions/2.0.3/en/deploy/agent-team
-- API Reference: https://docs.agentscope.io/api-reference
+- Agent Service Architecture: [https://docs.agentscope.io/versions/2.0.3/en/deploy/agent-service](https://docs.agentscope.io/versions/2.0.3/en/deploy/agent-service)
+- Agent Team: [https://docs.agentscope.io/versions/2.0.3/en/deploy/agent-team](https://docs.agentscope.io/versions/2.0.3/en/deploy/agent-team)
+- API Reference: [https://docs.agentscope.io/api-reference](https://docs.agentscope.io/api-reference)
 
 学习重点：
 

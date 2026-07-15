@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-import os
-
 from pydantic import BaseModel, Field
+
+from agentscope_learn import ConfigurationError, Settings
 
 
 class BookSummary(BaseModel):
@@ -15,20 +15,21 @@ class BookSummary(BaseModel):
     keywords: list[str] = Field(description="Three to five keywords")
 
 
-def require_env(name: str) -> str:
-    value = os.getenv(name)
-    if not value:
-        raise RuntimeError(f"Set {name} before running this example.")
-    return value
-
-
 def main() -> None:
-    require_env("DASHSCOPE_API_KEY")
+    settings = Settings.from_env()
+    if settings.model_provider != "dashscope":
+        raise ConfigurationError(
+            "model_structured_output.py uses DashScopeChatModel; "
+            "set MODEL_PROVIDER=dashscope"
+        )
+    api_key = settings.require_model_credentials()
 
+    from agentscope.credential import DashScopeCredential
     from agentscope.message import Msg
     from agentscope.model import DashScopeChatModel
 
-    model = DashScopeChatModel(model_name="qwen-max")
+    credential = DashScopeCredential(api_key=api_key)
+    model = DashScopeChatModel(credential=credential, model=settings.model_name)
     result = model.generate_structured_output(
         messages=[
             Msg(

@@ -7,34 +7,41 @@ runtime dependency.
 
 from __future__ import annotations
 
-import os
+import asyncio
+
+from agentscope_learn import ConfigurationError, Settings
 
 
-def require_env(name: str) -> str:
-    """Return a required environment variable or raise a clear error."""
-
-    value = os.getenv(name)
-    if not value:
-        raise RuntimeError(f"Set {name} before running this example.")
-    return value
-
-
-def main() -> None:
-    require_env("DASHSCOPE_API_KEY")
+async def main() -> None:
+    settings = Settings.from_env()
+    if settings.model_provider != "dashscope":
+        raise ConfigurationError(
+            "hello_agent.py uses DashScopeChatModel; set MODEL_PROVIDER=dashscope"
+        )
+    api_key = settings.require_model_credentials()
 
     from agentscope.agent import Agent
+    from agentscope.credential import DashScopeCredential
+    from agentscope.message import Msg, TextBlock
     from agentscope.model import DashScopeChatModel
 
-    model = DashScopeChatModel(model_name="qwen-max")
+    credential = DashScopeCredential(api_key=api_key)
+    model = DashScopeChatModel(credential=credential, model=settings.model_name)
     agent = Agent(
         name="assistant",
         system_prompt="You are a concise AgentScope learning assistant.",
         model=model,
     )
 
-    response = agent.reply("用一句话介绍 AgentScope。")
+    response = await agent.reply(
+        Msg(
+            name="user",
+            role="user",
+            content=[TextBlock(text="用一句话介绍 AgentScope。")],
+        )
+    )
     print(response)
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
