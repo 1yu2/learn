@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ch1 · 第一个 Agent — Agno 学习幻灯片</title>
+<style>
+  :root {
+    --bg0: #030712;
+    --bg1: #0a1628;
+    --ink: #e5e7eb;
+    --dim: #94a3b8;
+    --cyan: #22d3ee;
+    --cyan-soft: rgba(34, 211, 238, .16);
+    --violet: #818cf8;
+    --green: #86efac;
+    --pink: #f0abfc;
+    --amber: #fcd34d;
+    --panel: rgba(15, 23, 42, .82);
+    --line: rgba(34, 211, 238, .22);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; background: var(--bg0); overflow: hidden; }
+  body {
+    font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", sans-serif;
+    color: var(--ink);
+  }
+  /* ---------- stage: fixed 1280x720, scaled to fit ---------- */
+  #viewport { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }
+  #stage { width: 1280px; height: 720px; position: relative; flex: none; transform-origin: center center; }
+  .slide {
+    position: absolute; inset: 0; display: none; flex-direction: column;
+    padding: 64px 80px 84px; overflow: hidden;
+    background:
+      radial-gradient(900px 500px at 85% -10%, rgba(129, 140, 248, .14), transparent 60%),
+      radial-gradient(800px 480px at -10% 110%, rgba(34, 211, 238, .12), transparent 55%),
+      linear-gradient(135deg, var(--bg0), var(--bg1));
+  }
+  .slide.active { display: flex; }
+  /* faint grid */
+  .slide::before {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background-image:
+      linear-gradient(rgba(148, 163, 184, .05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(148, 163, 184, .05) 1px, transparent 1px);
+    background-size: 48px 48px;
+    mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%);
+  }
+  .slide > * { position: relative; z-index: 1; }
+
+  .kicker {
+    font-size: 15px; letter-spacing: .35em; color: var(--cyan);
+    text-transform: uppercase; margin-bottom: 18px; font-weight: 600;
+  }
+  h1 { font-size: 92px; line-height: 1.08; font-weight: 800; letter-spacing: .01em; }
+  h2 { font-size: 44px; line-height: 1.2; font-weight: 800; margin-bottom: 28px; }
+  h2 .em, .em { color: var(--cyan); }
+  .grad {
+    background: linear-gradient(92deg, #67e8f9 10%, #818cf8 55%, #f0abfc 95%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  p.lead { font-size: 24px; color: var(--dim); line-height: 1.7; }
+  .spacer { flex: 1; }
+
+  /* cover */
+  .cover { justify-content: center; }
+  .cover .ring {
+    position: absolute; right: -140px; top: -140px; width: 460px; height: 460px;
+    border-radius: 50%; border: 1.5px solid var(--line);
+    box-shadow: 0 0 90px rgba(34, 211, 238, .18) inset, 0 0 60px rgba(34, 211, 238, .10);
+    z-index: 0;
+  }
+  .cover .ring.r2 { right: 60px; top: 240px; width: 240px; height: 240px; border-color: rgba(129,140,248,.25); }
+  .cover .sub { font-size: 26px; color: var(--dim); margin-top: 26px; }
+  .cover .meta { margin-top: 64px; font-size: 15px; color: var(--dim); letter-spacing: .2em; }
+
+  /* generic layouts */
+  .cols { display: flex; gap: 40px; align-items: stretch; }
+  .cols > * { flex: 1; }
+  ul.pts { list-style: none; }
+  ul.pts li {
+    font-size: 24px; line-height: 1.55; padding: 16px 0 16px 40px; position: relative;
+    border-bottom: 1px dashed rgba(148, 163, 184, .18);
+  }
+  ul.pts li:last-child { border-bottom: none; }
+  ul.pts li::before {
+    content: "▸"; position: absolute; left: 4px; color: var(--cyan); font-size: 22px;
+  }
+  ul.pts li b { color: #fff; }
+  ul.pts li small { display: block; font-size: 17px; color: var(--dim); margin-top: 4px; }
+
+  .card {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
+    padding: 22px 26px; backdrop-filter: blur(2px);
+  }
+  .card h3 { font-size: 21px; color: var(--cyan); margin-bottom: 10px; font-weight: 700; }
+  .card p { font-size: 18px; color: var(--ink); line-height: 1.6; }
+  .card p small { color: var(--dim); font-size: 15px; }
+  .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+
+  /* quote / definition */
+  .quote {
+    font-size: 40px; line-height: 1.42; font-weight: 700; color: #fff;
+    padding: 34px 40px; border-left: 5px solid var(--cyan);
+    background: linear-gradient(90deg, var(--cyan-soft), transparent 70%);
+    border-radius: 0 16px 16px 0;
+  }
+  .quote .src { display: block; margin-top: 18px; font-size: 15px; color: var(--dim); font-weight: 400; letter-spacing: .08em; }
+
+  /* code */
+  pre {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
+    padding: 24px 28px; font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 16.5px; line-height: 1.62; color: #dbeafe; overflow: hidden;
+    box-shadow: 0 12px 40px rgba(2, 6, 23, .6);
+  }
+  pre .k { color: var(--cyan); }        /* keyword / param */
+  pre .s { color: var(--green); }       /* string */
+  pre .c { color: #64748b; }            /* comment */
+  pre .f { color: var(--pink); }        /* function / class */
+  pre .a { color: var(--amber); }       /* accent */
+  .codewrap { display: flex; gap: 36px; align-items: flex-start; }
+  .codewrap pre { flex: 1.25; }
+  .codewrap .notes { flex: 1; }
+  .codewrap .notes li { font-size: 19px; padding: 12px 0 12px 34px; }
+  .codewrap .notes li::before { font-size: 17px; }
+
+  .tag {
+    display: inline-block; font-size: 14px; color: var(--cyan); border: 1px solid var(--line);
+    border-radius: 999px; padding: 4px 14px; letter-spacing: .12em; margin-bottom: 14px;
+  }
+  .big { font-size: 30px; font-weight: 700; color: #fff; line-height: 1.5; }
+  .arrow { color: var(--cyan); font-weight: 700; }
+  .mono { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: .92em; color: var(--green); }
+
+  table.t { width: 100%; border-collapse: collapse; font-size: 19px; }
+  table.t th, table.t td { text-align: left; padding: 14px 18px; border-bottom: 1px solid rgba(148,163,184,.16); }
+  table.t th { color: var(--cyan); font-size: 16px; letter-spacing: .12em; }
+  table.t td b { color: #fff; }
+  table.t td { color: var(--ink); line-height: 1.5; }
+  table.t td small { color: var(--dim); font-size: 15px; }
+
+  .warn { border-color: rgba(252, 211, 77, .35); }
+  .warn h3 { color: var(--amber); }
+
+  /* self-check */
+  .q { counter-reset: q; }
+  .q li {
+    list-style: none; counter-increment: q; font-size: 23px; line-height: 1.5;
+    padding: 18px 0 18px 66px; position: relative; border-bottom: 1px dashed rgba(148,163,184,.18);
+  }
+  .q li::before {
+    content: counter(q, decimal-leading-zero); position: absolute; left: 0; top: 16px;
+    font-family: "SF Mono", Menlo, monospace; font-size: 20px; color: var(--cyan);
+    border: 1px solid var(--line); border-radius: 8px; padding: 2px 8px;
+  }
+  .q li small { display: block; color: var(--dim); font-size: 16px; margin-top: 4px; }
+
+  /* chrome: progress + counter + hint */
+  #bar { position: fixed; left: 0; bottom: 0; height: 3px; width: 0;
+    background: linear-gradient(90deg, var(--cyan), var(--violet)); z-index: 50;
+    transition: width .25s ease; box-shadow: 0 0 12px rgba(34,211,238,.7); }
+  #hud {
+    position: fixed; right: 22px; bottom: 16px; z-index: 50;
+    font-family: "SF Mono", Menlo, monospace; font-size: 13px; color: var(--dim); letter-spacing: .1em;
+  }
+  #hint {
+    position: fixed; left: 22px; bottom: 14px; z-index: 50; font-size: 12px; color: #475569;
+    letter-spacing: .12em;
+  }
+  kbd {
+    font-family: "SF Mono", Menlo, monospace; font-size: 11px; color: var(--dim);
+    border: 1px solid #1e293b; border-radius: 5px; padding: 1px 7px; background: #0f172a;
+  }
+</style>
+</head>
+<body>
+<div id="viewport">
+  <div id="stage">
+
+    <!-- 1 cover -->
+    <section class="slide cover">
+      <div class="ring"></div><div class="ring r2"></div>
+      <div class="kicker">Agno 学习笔记 · Chapter 1</div>
+      <h1><span class="grad">第一个 Agent</span></h1>
+      <p class="sub">20 行代码，让模型从「会聊天」变成「会干活」。</p>
+      <p class="meta">EXAMPLES/01_FIRST_AGENT · DEEPSEEK · AGNO SDK</p>
+    </section>
+
+    <!-- 2 motivation -->
+    <section class="slide">
+      <div class="kicker">为什么需要 Agent</div>
+      <h2>直接调模型 API，你得到的只是<span class="em">半个大脑</span></h2>
+      <ul class="pts">
+        <li><b>无状态</b>：每次请求都是陌生人见面，上次说了什么全忘了</li>
+        <li><b>只会说，不会做</b>：能生成文本，但不能查股价、不能搜网页、不能碰你的世界</li>
+        <li><b>没有规矩</b>：同样的输入，输出的格式和风格全看模型心情</li>
+      </ul>
+      <div class="spacer"></div>
+      <p class="big">Agent = 在裸模型外面包一层 <span class="em">控制循环</span>，补上状态、工具和规矩。</p>
+    </section>
+
+    <!-- 3 definition -->
+    <section class="slide">
+      <div class="kicker">核心定义 · 背下来</div>
+      <div class="quote">
+        “Agents are a <span class="em">stateful control loop</span> around a <span class="em">stateless model</span>.”
+        <span class="src">— docs.agno.com/agents/overview（官方原话）</span>
+      </div>
+      <div class="spacer"></div>
+      <div class="cards" style="grid-template-columns: 1fr 1fr 1fr;">
+        <div class="card"><h3>stateless model</h3><p>模型本身无记忆<br><small>状态是 Agent 给的，不是模型长的</small></p></div>
+        <div class="card"><h3>control loop</h3><p>推理 → 调工具 → 看结果 → 再推理<br><small>循环直到能回答为止</small></p></div>
+        <div class="card"><h3>guided by instructions</h3><p>循环听指令指挥<br><small>instructions 是方向盘</small></p></div>
+      </div>
+    </section>
+
+    <!-- 4 anatomy -->
+    <section class="slide">
+      <div class="kicker">解剖你的第一个 Agent · examples/01_first_agent/01_agent.py</div>
+      <h2>最小 Agent，<span class="em">全部家当</span>就这些</h2>
+      <div class="codewrap">
+        <pre><span class="k">agent</span> = <span class="f">Agent</span>(
+    <span class="k">name</span>=<span class="s">"助手"</span>,
+    <span class="k">model</span>=<span class="f">DeepSeek</span>(
+        <span class="k">id</span>=getenv(<span class="s">"DEEPSEEK_MODEL_ID"</span>,
+              <span class="s">"deepseek-v4-flash"</span>),
+        <span class="k">api_key</span>=api_key,
+    ),
+    <span class="k">description</span>=<span class="s">"一个友好的AI助手"</span>,
+    <span class="k">markdown</span>=<span class="a">True</span>,
+)
+
+agent.<span class="f">print_response</span>(<span class="s">"你好，请介绍一下自己"</span>, <span class="k">stream</span>=<span class="a">True</span>)</pre>
+        <ul class="pts notes">
+          <li><b>model</b> 是大脑：DeepSeek 适配器，也支持 <span class="mono">"openai:gpt-5.5"</span> 字符串简写</li>
+          <li><b>description</b> 写人设，会进入 system prompt</li>
+          <li><b>markdown=True</b> 让终端输出带格式</li>
+          <li><b>stream=True</b> 边生成边打印，不用干等</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 5 params -->
+    <section class="slide">
+      <div class="kicker">四个最常用参数</div>
+      <h2>Agent() 的<span class="em">旋钮</span>都在哪</h2>
+      <table class="t">
+        <tr><th>参数</th><th>干什么</th><th>你的代码里的例子</th></tr>
+        <tr><td><b>model</b></td><td>大脑：模型 + key + 超时/重试</td><td><small>DeepSeek(id="deepseek-v4-flash", api_key=...)</small></td></tr>
+        <tr><td><b>name / description</b></td><td>身份名片，拼进 system prompt</td><td><small>name="金融分析师"</small></td></tr>
+        <tr><td><b>instructions</b></td><td>行为规矩，字符串或列表</td><td><small>["使用表格展示数据", "只输出分析报告"]</small></td></tr>
+        <tr><td><b>markdown</b></td><td>终端渲染 Markdown 输出</td><td><small>markdown=True</small></td></tr>
+      </table>
+      <div class="spacer"></div>
+      <p class="lead">调 Agent 行为，先动 <span class="mono">instructions</span>，再考虑换模型。</p>
+    </section>
+
+    <!-- 6 instructions -->
+    <section class="slide">
+      <div class="kicker">立规矩</div>
+      <h2>instructions 是 Agent 的<span class="em">岗位说明书</span></h2>
+      <pre><span class="k">instructions</span>=[
+    <span class="s">"必须先使用 MCP 工具查询 Agno 官方文档，再回答问题。"</span>,
+    <span class="s">"回答中提供相关文档路径或链接。"</span>,
+]  <span class="c"># examples/01_first_agent/03_mcp.py</span></pre>
+      <div class="spacer"></div>
+      <ul class="pts">
+        <li><b>可以传列表</b>，一条一条写，比一大段散文好维护</li>
+        <li>写 <b>「必须 / 不要」</b> 比写「尽量 / 最好」有效得多<small>模型对强约束的服从度明显更高</small></li>
+        <li>输出不稳定时，<b>第一站</b>是改这里，而不是换模型</li>
+      </ul>
+    </section>
+
+    <!-- 7 run & stream -->
+    <section class="slide">
+      <div class="kicker">运行方式</div>
+      <h2>三种把 Agent <span class="em">跑起来</span>的姿势</h2>
+      <div class="cards" style="grid-template-columns: 1fr 1fr 1fr;">
+        <div class="card"><h3>print_response()</h3><p>直接打印到终端<br><small>stream=True 流式；调试期最顺手</small></p></div>
+        <div class="card"><h3>run()</h3><p>返回 RunOutput 对象<br><small>response.content 取文本，交给后续 Python 逻辑</small></p></div>
+        <div class="card"><h3>aprint_response()</h3><p>异步版<br><small>配 MCP 等异步工具时必须用它</small></p></div>
+      </div>
+      <div class="spacer"></div>
+      <pre><span class="c"># examples/01_first_agent/05_weather.py — 把输出接回自己的程序</span>
+<span class="k">response</span> = weather_agent.<span class="f">run</span>(<span class="s">"纽约一年中每个月的天气如何？"</span>)
+<span class="f">print</span>(response.<span class="k">content</span>)</pre>
+    </section>
+
+    <!-- 8 pitfall: expected_output -->
+    <section class="slide">
+      <div class="kicker">真实坑 · 来自你的 05_weather.py</div>
+      <h2><span class="mono" style="color:var(--amber)">expected_output</span> 只是<span class="em">提示</span>，不是校验</h2>
+      <div class="cols">
+        <div class="card warn">
+          <h3>⚠ 你踩过的坑</h3>
+          <p>定义了 <span class="mono">WeatherData(BaseModel)</span>，却<b>没有</b>传给 Agent —— 它只是一个摆设。
+          靠 <span class="mono">expected_output="包含月份、季节和平均温度的表格"</span> 拿到的表格，<b>没有任何 Pydantic 校验</b>。</p>
+        </div>
+        <div class="card">
+          <h3>✓ 怎么选</h3>
+          <p>要机器可读、可校验的结构 → 用 <span class="mono">output_schema=WeatherData</span><br><br>
+          只要格式上的口头提示 → <span class="mono">expected_output</span> 就够<br>
+          <small>结构化输出在 ch3 还会深入</small></p>
+        </div>
+      </div>
+      <div class="spacer"></div>
+      <p class="big">提示词管不住格式时，别再「多写几句」，<span class="arrow">→</span> 上 <span class="mono">output_schema</span>。</p>
+    </section>
+
+    <!-- 9 tools teaser -->
+    <section class="slide">
+      <div class="kicker">给 Agent 长手</div>
+      <h2>一行 <span class="mono">tools=[...]</span>，Agent 就能碰真实世界</h2>
+      <pre><span class="k">agent_full</span> = <span class="f">Agent</span>(
+    <span class="k">name</span>=<span class="s">"金融分析师"</span>,
+    <span class="k">role</span>=<span class="s">"专业的股票市场分析师"</span>,
+    <span class="k">model</span>=<span class="f">DeepSeek</span>(...),
+    <span class="k">tools</span>=[<span class="f">YFinanceTools</span>()],   <span class="c"># ← 就这一行，会查股价了</span>
+    <span class="k">markdown</span>=<span class="a">True</span>,
+)  <span class="c"># examples/01_first_agent/04_finacial.py</span></pre>
+      <div class="spacer"></div>
+      <div class="card warn">
+        <h3>⚠ 代码注释会骗人</h3>
+        <p>文件里写着 <small class="mono"># All functions enabled by default</small>，但 README 实测：当前版本 <span class="mono">YFinanceTools()</span> 默认只启用 <span class="mono">get_current_stock_price</span>。要做完整分析得用 <span class="mono">YFinanceTools(all=True)</span> 或显式启用函数。</p>
+      </div>
+      <div class="spacer"></div>
+      <p class="lead">工具是 ch2 的主菜，这里先记住：<b>给工具 = 给能力</b>。</p>
+    </section>
+
+    <!-- 10 MCP -->
+    <section class="slide">
+      <div class="kicker">工具的升级版 · MCP</div>
+      <h2>MCP：把<span class="em">别人的服务</span>变成你的工具</h2>
+      <div class="codewrap">
+        <pre><span class="k">async with</span> <span class="f">MCPTools</span>(
+    <span class="k">transport</span>=<span class="s">"streamable-http"</span>,
+    <span class="k">url</span>=<span class="s">"https://docs.agno.com/mcp"</span>,
+) <span class="k">as</span> mcp_tools:
+    agent = <span class="f">Agent</span>(<span class="k">tools</span>=[mcp_tools], ...)
+    <span class="k">await</span> agent.<span class="f">aprint_response</span>(<span class="s">"..."</span>, <span class="k">stream</span>=<span class="a">True</span>)</pre>
+        <ul class="pts notes">
+          <li>Agno 官方文档站本身就是 MCP 服务<small>Agent 可先查文档再回答你</small></li>
+          <li>用 <b>async with</b> 管理连接生命周期</li>
+          <li>异步连接<b>必须</b>配 <span class="mono">aprint_response</span><small>改回同步 print_response 会炸 —— 你 README 里记过</small></li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 11 AgentOS -->
+    <section class="slide">
+      <div class="kicker">从脚本到服务</div>
+      <h2>同一个 Agent，包一层 <span class="grad">AgentOS</span> 就是生产 API</h2>
+      <div class="codewrap">
+        <pre><span class="k">agent_os</span> = <span class="f">AgentOS</span>(
+    <span class="k">id</span>=<span class="s">"web-search-os"</span>,
+    <span class="k">agents</span>=[web_agent],
+)
+app = agent_os.<span class="f">get_app</span>()
+agent_os.<span class="f">serve</span>(app=app, host=<span class="s">"localhost"</span>, port=<span class="a">7777</span>)</pre>
+        <ul class="pts notes">
+          <li>AgentOS 是 <b>FastAPI</b> 运行时<small>白得 /docs Swagger 文档</small></li>
+          <li>浏览器打开 <span class="mono">os.agno.com</span> 连上本地 7777<small>就有现成的聊天 UI 和会话查看</small></li>
+          <li>官方路径也是这个套路<small>20 行：脚本 → 带存储/追踪的服务</small></li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 12 pitfalls -->
+    <section class="slide">
+      <div class="kicker">坑与调试 · 都是你的真实记录</div>
+      <h2>这三颗雷，<span class="em">排掉</span>就是经验</h2>
+      <div class="cards" style="grid-template-columns: 1fr 1fr 1fr;">
+        <div class="card warn"><h3>日志写着 OpenAI API？</h3><p>别慌，没配错。<br><small>DeepSeek 适配器复用 OpenAI 兼容客户端，底层日志沿用了这个名字，请求仍走 DeepSeek 官方接口。</small></p></div>
+        <div class="card warn"><h3>import 即运行</h3><p>示例在模块顶层调模型。<br><small>哪怕只是 import 这个文件，也会立刻发请求、烧 token。正式代码要包进 main。</small></p></div>
+        <div class="card warn"><h3>AgentOS 起不来</h3><p>先查端口占用：<br><small class="mono">lsof -nP -iTCP:7777 -sTCP:LISTEN</small><br><small>被占了就停掉旧进程或改端口。</small></p></div>
+      </div>
+    </section>
+
+    <!-- 13 self-check -->
+    <section class="slide">
+      <div class="kicker">自测 · 合上书能答几条？</div>
+      <h2>检查点<span class="em">四连问</span></h2>
+      <ul class="q">
+        <li>用一句话说清 Agent 是什么？<small>提示：stateful control loop / stateless model</small></li>
+        <li>description、instructions、expected_output 分别影响什么？<small>提示：人设 / 规矩 / 格式提示（不校验）</small></li>
+        <li>想要稳定、可校验的结构化输出，该用哪个参数？<small>提示：不是 expected_output</small></li>
+        <li>什么场景下 print_response 必须换成 aprint_response？<small>提示：和异步工具有关</small></li>
+      </ul>
+    </section>
+
+    <!-- 14 closing -->
+    <section class="slide cover">
+      <div class="ring"></div>
+      <div class="kicker">本章一句话</div>
+      <h1 style="font-size:56px;">Agent = 模型 + 指令 +（可选的）工具<br>外面套一个<span class="grad">控制循环</span></h1>
+      <p class="sub">下一章 · ch2 工具调用：让 Agent 从「会回答」到「会行动」。</p>
+      <p class="meta">按 <kbd>←</kbd> 返回复习 · <kbd>Home</kbd> 回到封面</p>
+    </section>
+
+  </div>
+</div>
+
+<div id="bar"></div>
+<div id="hud">1 / 14</div>
+<div id="hint"><kbd>←</kbd> <kbd>→</kbd> 翻页 · <kbd>Space</kbd> 下一页 · 点击左右两侧也可翻页</div>
+
+<script>
+(function () {
+  var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+  var n = slides.length;
+  var cur = 0;
+  var stage = document.getElementById('stage');
+  var bar = document.getElementById('bar');
+  var hud = document.getElementById('hud');
+
+  function fit() {
+    var s = Math.min(window.innerWidth / 1280, window.innerHeight / 720);
+    stage.style.transform = 'scale(' + s + ')';
+  }
+  function show(i, push) {
+    cur = Math.max(0, Math.min(n - 1, i));
+    slides.forEach(function (el, k) { el.classList.toggle('active', k === cur); });
+    bar.style.width = ((cur + 1) / n * 100) + '%';
+    hud.textContent = (cur + 1) + ' / ' + n;
+    if (push !== false) history.replaceState(null, '', '#' + (cur + 1));
+  }
+  function next() { show(cur + 1); }
+  function prev() { show(cur - 1); }
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); next(); }
+    else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); prev(); }
+    else if (e.key === 'Home') { show(0); }
+    else if (e.key === 'End') { show(n - 1); }
+  });
+  document.addEventListener('click', function (e) {
+    if (e.clientX > window.innerWidth * 0.5) next(); else prev();
+  });
+  window.addEventListener('resize', fit);
+  window.addEventListener('hashchange', function () {
+    var h = parseInt((location.hash || '').slice(1), 10);
+    if (h >= 1 && h <= n) show(h - 1, false);
+  });
+
+  fit();
+  var start = parseInt((location.hash || '').slice(1), 10);
+  show((start >= 1 && start <= n) ? start - 1 : 0);
+})();
+</script>
+</body>
+</html>

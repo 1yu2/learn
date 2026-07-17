@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ch3 · 存储与记忆 — Agno 学习幻灯片</title>
+<style>
+  :root {
+    --bg: #070a07;
+    --panel: rgba(61, 255, 115, .045);
+    --green: #3dff73;
+    --green-dim: #2a8a4d;
+    --green-dark: #1a4d2e;
+    --amber: #ffb224;
+    --red: #ff5555;
+    --cyan: #4dd8e6;
+    --text: #c9f5d8;
+    --dim: #5e8f70;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; background: #020402; overflow: hidden; }
+  body { font-family: "SF Mono", Menlo, Consolas, "Courier New", monospace; color: var(--text); }
+  #viewport { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }
+  #stage { width: 1280px; height: 720px; position: relative; flex: none; transform-origin: center center; }
+  .slide {
+    position: absolute; inset: 0; display: none; flex-direction: column;
+    padding: 0; overflow: hidden; background:
+      radial-gradient(1000px 600px at 50% -20%, rgba(61,255,115,.07), transparent 60%),
+      var(--bg);
+  }
+  .slide.active { display: flex; }
+  /* scanlines + vignette */
+  .slide::after {
+    content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 5;
+    background:
+      repeating-linear-gradient(0deg, rgba(0,0,0,.20) 0 1px, transparent 1px 3px),
+      radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,.5) 100%);
+  }
+  .slide > * { position: relative; z-index: 1; }
+
+  .termbar {
+    display: flex; align-items: center; gap: 8px; padding: 14px 20px;
+    border-bottom: 1px solid var(--green-dark); background: rgba(0,0,0,.45);
+    font-size: 13px; color: var(--dim); flex: none;
+  }
+  .termbar i { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+  .termbar i:nth-child(1) { background: #ff5f57; }
+  .termbar i:nth-child(2) { background: #febc2e; }
+  .termbar i:nth-child(3) { background: #28c840; }
+  .termbar span { margin-left: 10px; letter-spacing: .05em; }
+  .body { flex: 1; display: flex; flex-direction: column; padding: 44px 64px 56px; min-height: 0; }
+
+  .kicker { font-size: 15px; color: var(--green-dim); margin-bottom: 14px; letter-spacing: .06em; }
+  .kicker::before { content: "$ "; color: var(--green); font-weight: 700; }
+  h1 { font-size: 64px; line-height: 1.15; font-weight: 700; color: var(--green);
+    text-shadow: 0 0 18px rgba(61,255,115,.4); letter-spacing: -.01em; }
+  h2 { font-size: 34px; line-height: 1.3; font-weight: 700; color: var(--green);
+    text-shadow: 0 0 14px rgba(61,255,115,.35); margin-bottom: 24px; }
+  h2 .em, .em { color: var(--amber); text-shadow: 0 0 14px rgba(255,178,36,.4); }
+  p.lead { font-size: 19px; color: var(--dim); line-height: 1.7; }
+  .spacer { flex: 1; }
+  .cursor::after { content: "█"; color: var(--green); animation: blink 1.1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  .cover .boot { font-size: 17px; color: var(--dim); line-height: 2.0; margin-bottom: 30px; }
+  .cover .boot b { color: var(--green); font-weight: 700; }
+  .cover .sub { font-size: 24px; color: var(--text); margin-top: 26px; }
+  .cover .meta { margin-top: 46px; font-size: 13px; color: var(--dim); letter-spacing: .18em; }
+
+  .card {
+    background: var(--panel); border: 1px solid var(--green-dark); padding: 18px 22px;
+    box-shadow: 0 0 24px rgba(61,255,115,.06) inset;
+  }
+  .card h3 { font-size: 17px; color: var(--green); margin-bottom: 8px; font-weight: 700; }
+  .card h3::before { content: "## "; color: var(--green-dim); }
+  .card p { font-size: 16px; line-height: 1.65; }
+  .card p small { color: var(--dim); font-size: 14px; }
+  .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .cards.c3 { grid-template-columns: 1fr 1fr 1fr; }
+
+  pre {
+    background: rgba(0,0,0,.5); border: 1px solid var(--green-dark);
+    padding: 20px 24px; font-size: 15.5px; line-height: 1.62; color: var(--text);
+    overflow: hidden; font-family: inherit;
+    box-shadow: 0 0 30px rgba(0,0,0,.6), 0 0 18px rgba(61,255,115,.05) inset;
+  }
+  pre .k { color: var(--green); font-weight: 700; }
+  pre .s { color: var(--cyan); }
+  pre .c { color: var(--dim); }
+  pre .f { color: var(--amber); }
+  pre .a { color: var(--red); font-weight: 700; }
+  .codewrap { display: flex; gap: 30px; align-items: flex-start; }
+  .codewrap pre { flex: 1.25; }
+  .codewrap .notes { flex: 1; }
+  .codewrap .notes li { font-size: 16.5px; padding: 10px 0 10px 26px; }
+
+  ul.pts { list-style: none; }
+  ul.pts li {
+    font-size: 19px; line-height: 1.6; padding: 12px 0 12px 30px; position: relative;
+    border-bottom: 1px dashed rgba(61,255,115,.16);
+  }
+  ul.pts li:last-child { border-bottom: none; }
+  ul.pts li::before { content: ">"; position: absolute; left: 0; color: var(--green); font-weight: 700; }
+  ul.pts li b { color: var(--green); font-weight: 700; }
+  ul.pts li small { display: block; font-size: 14px; color: var(--dim); margin-top: 3px; }
+
+  table.t { width: 100%; border-collapse: collapse; font-size: 16px; border: 1px solid var(--green-dark); background: rgba(0,0,0,.35); }
+  table.t th, table.t td { text-align: left; padding: 12px 16px; border: 1px solid var(--green-dark); vertical-align: top; }
+  table.t th { color: var(--green); font-size: 14px; letter-spacing: .1em; background: rgba(61,255,115,.07); }
+  table.t td b { color: var(--green); }
+  table.t td small { color: var(--dim); font-size: 13.5px; line-height: 1.5; display: block; margin-top: 3px; }
+
+  .mono { color: var(--cyan); }
+  .big { font-size: 24px; font-weight: 700; color: var(--green); line-height: 1.55; text-shadow: 0 0 12px rgba(61,255,115,.3); }
+  .warn { border-color: rgba(255,178,36,.5); background: rgba(255,178,36,.05); }
+  .warn h3 { color: var(--amber); }
+  .warn h3::before { content: "[!] "; color: var(--amber); }
+  .err { color: var(--red); font-weight: 700; }
+  .ok { color: var(--green); font-weight: 700; }
+
+  .q { counter-reset: q; }
+  .q li {
+    list-style: none; counter-increment: q; font-size: 18.5px; line-height: 1.5;
+    padding: 14px 0 14px 70px; position: relative; border-bottom: 1px dashed rgba(61,255,115,.16);
+  }
+  .q li::before {
+    content: "[0" counter(q) "]"; position: absolute; left: 0; top: 13px;
+    font-size: 16px; color: var(--green); border: 1px solid var(--green-dark); padding: 2px 8px;
+  }
+  .q li small { display: block; color: var(--dim); font-size: 14px; margin-top: 3px; }
+
+  #bar { position: fixed; left: 0; bottom: 0; height: 3px; width: 0; background: var(--green); z-index: 50;
+    transition: width .25s ease; box-shadow: 0 0 10px rgba(61,255,115,.8); }
+  #hud { position: fixed; right: 22px; bottom: 16px; z-index: 50; font-size: 12px; color: var(--dim); letter-spacing: .1em; font-family: inherit; }
+  #hint { position: fixed; left: 22px; bottom: 14px; z-index: 50; font-size: 12px; color: #2f4a3a; letter-spacing: .1em; font-family: inherit; }
+  kbd { font-size: 11px; color: var(--dim); border: 1px solid var(--green-dark); border-radius: 3px; padding: 1px 6px; background: rgba(0,0,0,.5); font-family: inherit; }
+</style>
+</head>
+<body>
+<div id="viewport">
+  <div id="stage">
+
+    <!-- 1 cover -->
+    <section class="slide">
+      <div class="termbar"><i></i><i></i><i></i><span>agno@learn: ~/ch3_storage_memory</span></div>
+      <div class="body cover">
+        <div class="boot">
+          $ agno learn --chapter 3<br>
+          &gt; loading modules ... <b>database</b> / <b>history</b> / <b>memory</b><br>
+          &gt; examples/03_storage_memory ... 10 files found <b>[OK]</b>
+        </div>
+        <h1>存储与记忆<br>DATABASE · HISTORY · MEMORY</h1>
+        <p class="sub">让 Agent 记得你是谁 —— 不止这一轮对话。<span class="cursor"></span></p>
+        <p class="meta">CHAPTER 03 · SQLITE · SESSION · USER MEMORY</p>
+      </div>
+    </section>
+
+    <!-- 2 three concepts -->
+    <section class="slide">
+      <div class="termbar"><i></i><i></i><i></i><span>agno@learn: ~/ch3_storage_memory</span></div>
+      <div class="body">
+        <div class="kicker">cat 01_three_concepts.md</div>
+        <h2>三个词分不清，这章就<span class="em">白学</span></h2>
+        <table class="t">
+          <tr><th>概念</th><th>存什么</th><th>回答的问题</th></tr>
+          <tr><td><b>Session History</b></td><td>对话消息记录</td><td><small>用户刚才具体说了什么？（连续上下文用）</small></td></tr>
+          <tr><td><b>Session State</b></td><td>跨 run 的内部状态（购物车、计数器）</td><td><small>流程进行到哪一步了？</small></td></tr>
+          <tr><td><b>User Memory</b></td><td>从对话提取的用户事实与偏好</td><td><small>系统从交互中学到了哪些可复用事实？</small></td></tr>
+        </table>
+        <div class="spacer"></div>
+        <p class="big">history 管「刚才」，state 管「进度」，memory 管「长期」。</p>
+      </div>
+    </section>
+
+    <!-- 3 session storage -->
+    <section class="slide">
+      <div class="termbar"><i></i><i></i><i></i><span>agno@learn: ~/ch3_storage_memory</span></div>
+      <div class="body">
+        <div class="kicker">cat 02_session_storage.md</div>
+        <h2>挂上 db，一切<span class="em">自动落库</span></h2>
+        <pre><span class="k">db</span> = <span class="f">SqliteDb</span>(db_file=<span class="s">"my_agent.db"</span>)
+agent = <span class="f">Agent</span>(model=..., <span class="k">db</span>=db)</pre>
+        <ul class="pts">
+          <li>完整 run、消息、状态、元数据自动存进 <b>agno_sessions</b> 表<small>表不存在会自动创建，不用手写 schema</small></li>
+          <li>支持 13+ 数据库：开发用 <b>SQLite</b>，生产用 <b>PostgreSQL</b></li>
+        </ul>
+        <div class="spacer"></div>
+        <div class="card warn">
+          <h3>最常见的误解</h3>
+          <p>配了 db 只代表「<b>保存</b>」—— <span class="err">不代表</span>旧消息会自动发给模型。要让模型看到历史，看下一页的条件链。</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4 history chain -->
+    <section class="slide">
+      <div class="termbar"><i></i><i></i><i></i><span>agno@learn: ~/ch3_storage_memory</span></div>
+      <div class="body">
+        <div class="kicker">cat 03_history_chain.py · examples/03_storage_memory/02_multi_user.py</div>
+        <h2>模型看到历史，需要<span class="em">四个条件同时成立</span></h2>
+        <div class="codewrap">
+          <pre>customer_service_agent = <span class="f">Agent</span>(
+    model=<span class="f">DeepSeek</span>(...),
+    <span class="k">db</span>=db,
+    <span class="k">update_memory_on_run</span>=<span class="k">True</span>,
+    <span class="k">add_history_to_context</span>=<span class="k">True</span>,  <span class="c"># ③ 历史放回上下文</span>
+    <span class="k">num_history_runs</span>=3,              <span class="c"># ④ 带最近 3 轮</span>
+)
+
+<span class="c"># ① 每个用户固定 session_id  ② 固定 user_id</span></pre>
+          <ul class="pts notes">
+            <li>① 稳定的 <b>session_id</b><small>同一个会话的钥匙</small></li>
+            <li>② 稳定的 <b>user_id</b><small>同一个人的钥匙</small></li>
+            <li>③ <b>add_history_to_context=True</b><small>默认不放回！</small></li>
+            <li>④ <b>num_history_runs</b> 控制带几轮<small>默认 3；越多越贵越慢，官方建议从小起步</small></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5 auto memory -->
+    <section class="slide">
+      <div class="termbar"><i></i><i></i><i></i><span>agno@learn: ~/ch3_storage_memory</span></div>
+      <div class="body">
+        <div class="kicker">cat 04_auto_memory.md</div>
+        <h2>自动记忆：<span class="mono">update_memory_on_run=True</span></h2>
+        <ul class="pts">
+          <li>每轮对话后，自动把<b>用户事实与偏好</b>提取进 <b>agno_memories</b> 表<small>"Sarah prefers email" 这类</small></li>
+          <li>官方推荐用于<b>大多数场景</b>：可靠、可预期</li>
+          <li>提取由模型参与 → <b>非确定</b>：不保证每条输入都生成记忆</li>
+          <li>成本提醒：自动模式每轮多一次 MemoryManager 调用</li>
+        </ul>
+        <div class="spacer"></div>
+        <p class="lead">记忆存进去后，后续对话会自动注入上下文 —— Agent 就「记得」你了。</p>
+      </div>
+    </section>
+
+    <!-- 6 agentic memory & mutex -->
+    <section class="slide">
+      <div class="termbar"><i></i><i></i><i></i><span>agno@learn: ~/ch3_storage_memory</span></div>
+      <div class="body">
+        <div class="kicker">cat 05_agentic_memory.md</div>
+        <h2>Agentic 记忆：让 Agent <span class="em">自己决定</span>记不记</h2>
+        <div class="cols" style="display:flex; gap:26px;">
+          <div class="card" style="flex:1;">
+            <h3>enable_agentic_memory=True</h3>
+            <p>主 Agent 获得 <span class="mono">update_user_memory</span> 工具，自行决定何时创建、更新、删除记忆。<br><small>不再每轮无条件提取，更依赖模型判断。</small></p>
+          </div>
+          <div class="card warn" style="flex:1;">
+            <h3>互斥警告（官方强调）</h3>
+            <p>和 <span class="mono">update_memory_on_run</span> <b>不要同时开</b>：同开不报错，但 agentic <b>永远优先</b>，自动更新被静默忽略。<br><small>另外 <span class="mono">enable_user_memories</span> 是即将弃用的别名，新代码别用。</small></p>
+          </div>
+        </div>
+        <div class="spacer"></div>
+        <p class="big">二选一：<span class="ok">自动派</span> 稳，<span class="em">agentic 派</span> 活。混用两头不占。</p>
+      </div>
+    </section>
+
+    <!-- 7 memory record -->
+    <section class="slide">
+      <div class="termbar"><i></i><i></i><i></i><span>agno@learn: ~/ch3_storage_memory</span></div>
+      <div class="body">
+        <div class="kicker">sqlite3 my_agent.db "select * from agno_memories limit 1"</div>
+        <h2>一条 memory 的<span class="em">解剖图</span></h2>
+        <pre>┌─ MEMORY RECORD ───────────────────────────────
+│
+│ <span class="k">memory_id</span>  : 9f3c...              <span class="c"># 主键</span>
+│ <span class="k">memory</span>     : <span class="s">"用户偏好用邮件沟通"</span>    <span class="c"># 事实正文</span>
+│ <span class="k">topics</span>     : [<span class="s">"沟通偏好"</span>]          <span class="c"># 可能为空！</span>
+│ <span class="k">input</span>      : <span class="s">"以后有事发我邮件…"</span>    <span class="c"># 触发它的原始输入</span>
+│ <span class="k">user_id</span>    : <span class="s">"customer_001"</span>        <span class="c"># 属于谁 ← 隔离单位</span>
+│ <span class="k">agent_id</span>   : <span class="s">"support_bot"</span>         <span class="c"># 谁记的</span>
+│ <span class="k">created_at</span> : ...
+└──────────────────────────────────────────────</pre>
+        <div class="spacer"></div>
+        <p class="lead">topics 由模型生成，可能为空 —— 生产代码别无脑 <span class="mono">join(memory.topics)</span>。</p>
+      </div>
+    </section>
+
+    <!-- 8 CRUD -->
+    <section class="slide">
+      <div class="termbar"><i></i><i></i><i></i><span>agno@learn: ~/ch3_storage_memory</span></div>
+      <div class="body">
+        <div class="kicker">cat 06_crud.py · examples/03_storage_memory/06_curd_mem.py</div>
+        <h2>读写删的<span class="em">正确姿势</span></h2>
+        <div class="codewrap">
+          <pre><span class="c"># 读：某个用户的全部记忆</span>
+memories = agent.<span class="f">get_user_memories</span>(<span class="k">user_id</span>=<span class="s">"user_food_lover"</span>)
+
+<span class="c"># 删单条：走 db 接口</span>
+agent.db.<span class="f">delete_user_memory</span>(
+    <span class="k">memory_id</span>=memory_to_delete.memory_id,
+    <span class="k">user_id</span>=<span class="s">"user_food_lover"</span>,
+)</pre>
+          <ul class="pts notes">
+            <li><span class="err">✗ agent.delete_user_memory(...)</span><small>这个方法不存在 —— 你 03_manual.py 注释里就踩过</small></li>
+            <li><span class="ok">✓ agent.db.delete_user_memory(...)</span><small>2.7.3 的正确入口</small></li>
+            <li><b>memory_manager.clear()</b> 是清<b>整张表</b><small>不是只清当前用户，慎用</small></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 9 user_id pitfalls -->
+    <section class="slide">
+      <div class="termbar"><i></i><i></i><i></i><span>agno@learn: ~/ch3_storage_memory</span></div>
+      <div class="body">
+        <div class="kicker">cat 07_isolation_bugs.md · 你的真实踩坑</div>
+        <h2><span class="mono">user_id</span> 是隔离的<span class="em">生命线</span></h2>
+        <div class="cards">
+          <div class="card warn">
+            <h3>打错一个字母 = 换了个人</h3>
+            <p><small>08_p1.py 先用 <span class="mono">customer_limig</span>，后用 <span class="mono">customer_liming</span> —— 系统当成两个用户，第一次记的姓名/预算全部「消失」。</small></p>
+          </div>
+          <div class="card warn">
+            <h3>切用户没切 session</h3>
+            <p><small>01_auto_memory.py 从 user_001 换到 user_zhangsan 时没传新 session_id，自动 session 会「粘」在 Agent 实例上，第二个用户的会话持久化不可靠。</small></p>
+          </div>
+          <div class="card warn">
+            <h3>忘了传 user_id</h3>
+            <p><small>会落到默认用户上 —— 多个真实用户共享同一批记忆，这就是「用户看到彼此内容」的首要排查项。</small></p>
+          </div>
+          <div class="card">
+            <h3>共同教训</h3>
+            <p><small>user_id / session_id 当作<b>主键</b>对待：从可信来源（登录态）来，不要手敲、不要复用。</small></p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 10 multi-agent isolation -->
+    <section class="slide">
+      <div class="termbar"><i></i><i></i><i></i><span>agno@learn: ~/ch3_storage_memory</span></div>
+      <div class="body">
+        <div class="kicker">cat 08_multi_agent.py · examples/03_storage_memory/07_safe_multi_person.py</div>
+        <h2>多 Agent 共享一张表 ≠ <span class="em">自动隔离</span></h2>
+        <div class="codewrap">
+          <pre><span class="k">class</span> <span class="f">AgentScopedMemoryManager</span>(MemoryManager):
+    <span class="s">"""只读取当前 Agent 创建的用户记忆。"""</span>
+
+    <span class="k">def</span> <span class="f">read_from_db</span>(<span class="k">self</span>, <span class="k">user_id</span>=<span class="k">None</span>):
+        <span class="k">if</span> <span class="k">self</span>.db <span class="k">is None</span>:
+            <span class="k">return None</span>
+        memories = <span class="k">self</span>.db.<span class="f">get_user_memories</span>(
+            <span class="k">user_id</span>=user_id,
+            <span class="k">agent_id</span>=<span class="k">self</span>.agent_id,   <span class="c"># ← 强制按 agent 过滤</span>
+        )</pre>
+          <ul class="pts notes">
+            <li>默认 MemoryManager 读记忆<b>只按 user_id 过滤</b><small>记录里有 agent_id ≠ 默认会按它过滤</small></li>
+            <li>两个 Agent 同库同表同 user_id → 默认<b>共享</b>记忆</li>
+            <li>覆写 <span class="mono">read_from_db()</span> 强制带上 agent_id<small>tests/test_safe_multi_tenant_memory.py 用真实 SQLite 验证过</small></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 11 cleanup -->
+    <section class="slide">
+      <div class="termbar"><i></i><i></i><i></i><span>agno@learn: ~/ch3_storage_memory</span></div>
+      <div class="body">
+        <div class="kicker">cat 09_cleanup.md</div>
+        <h2>数据清理的<span class="em">粒度陷阱</span></h2>
+        <table class="t">
+          <tr><th>操作</th><th>影响范围</th><th>什么时候用</th></tr>
+          <tr><td><span class="mono">db.delete_user_memory(...)</span></td><td><b>单条</b>（需 memory_id + user_id）</td><td><small>用户要求删除某条事实</small></td></tr>
+          <tr><td><span class="mono">memory_manager.clear()</span></td><td><b>整张表</b></td><td><small>几乎只用于本地重置，生产慎用</small></td></tr>
+          <tr><td>换 <span class="mono">db_file</span></td><td>整个库</td><td><small>独立实验之间隔离 —— 你 10 个示例共用一个 my_agent.db 就互相污染过</small></td></tr>
+        </table>
+        <div class="spacer"></div>
+        <p class="big">生产环境必须回答：<span class="em">谁的数据、留多久、怎么删</span>。</p>
+      </div>
+    </section>
+
+    <!-- 12 boundaries -->
+    <section class="slide">
+      <div class="termbar"><i></i><i></i><i></i><span>agno@learn: ~/ch3_storage_memory</span></div>
+      <div class="body">
+        <div class="kicker">cat 10_boundaries.md</div>
+        <h2>记忆的<span class="em">边界</span>，越早知道越好</h2>
+        <ul class="pts">
+          <li><b>memory 不是权威数据源</b><small>它是模型生成的摘要，不能替代订单、病历、成绩 —— 那些应该走业务系统</small></li>
+          <li><b>提取是非确定的</b><small>创建/合并/topics 都有模型参与，别写依赖「一定会记住」的逻辑</small></li>
+          <li><b>记忆会涨，token 也会涨</b><small>注入上下文的用户记忆持续增长，要定期审视清理</small></li>
+          <li><b>history 越多越慢越贵</b><small>num_history_runs 从 3 起步，不够再加</small></li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 13 self-check -->
+    <section class="slide">
+      <div class="termbar"><i></i><i></i><i></i><span>agno@learn: ~/ch3_storage_memory</span></div>
+      <div class="body">
+        <div class="kicker">./quiz.sh --chapter 3</div>
+        <h2>检查点<span class="em">四连问</span></h2>
+        <ul class="q">
+          <li>session history、session state、memory 三者各存什么？<small>提示：消息 / 内部状态 / 用户事实</small></li>
+          <li>配了 db，模型就能看到历史对话吗？需要哪几个条件？<small>提示：不能；session_id + user_id + add_history_to_context + num_history_runs</small></li>
+          <li>哪两个参数互斥？同时开会发生什么？<small>提示：agentic 永远优先，自动被忽略</small></li>
+          <li>删除某用户的一条记忆，正确的 API 是什么？<small>提示：不在 Agent 上，在 db 上</small></li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 14 closing -->
+    <section class="slide">
+      <div class="termbar"><i></i><i></i><i></i><span>agno@learn: ~/ch3_storage_memory</span></div>
+      <div class="body cover">
+        <div class="boot">$ tail -n1 ch3_notes.md</div>
+        <h1 style="font-size:44px;">db 管「存」，history 管「刚才」，<br>memory 管「长期」——<br><span class="em">user_id 把它们隔开</span>。<span class="cursor"></span></h1>
+        <p class="sub">下一章 · ch5 Teams：一个 Agent 搞不定？组个队。</p>
+        <p class="meta">按 <kbd>←</kbd> 返回复习 · <kbd>Home</kbd> 回到封面</p>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<div id="bar"></div>
+<div id="hud">1 / 14</div>
+<div id="hint"><kbd>←</kbd> <kbd>→</kbd> next/prev · <kbd>Space</kbd> next</div>
+
+<script>
+(function () {
+  var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+  var n = slides.length;
+  var cur = 0;
+  var stage = document.getElementById('stage');
+  var bar = document.getElementById('bar');
+  var hud = document.getElementById('hud');
+
+  function fit() {
+    var s = Math.min(window.innerWidth / 1280, window.innerHeight / 720);
+    stage.style.transform = 'scale(' + s + ')';
+  }
+  function show(i, push) {
+    cur = Math.max(0, Math.min(n - 1, i));
+    slides.forEach(function (el, k) { el.classList.toggle('active', k === cur); });
+    bar.style.width = ((cur + 1) / n * 100) + '%';
+    hud.textContent = (cur + 1) + ' / ' + n;
+    if (push !== false) history.replaceState(null, '', '#' + (cur + 1));
+  }
+  function next() { show(cur + 1); }
+  function prev() { show(cur - 1); }
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); next(); }
+    else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); prev(); }
+    else if (e.key === 'Home') { show(0); }
+    else if (e.key === 'End') { show(n - 1); }
+  });
+  document.addEventListener('click', function (e) {
+    if (e.clientX > window.innerWidth * 0.5) next(); else prev();
+  });
+  window.addEventListener('resize', fit);
+  window.addEventListener('hashchange', function () {
+    var h = parseInt((location.hash || '').slice(1), 10);
+    if (h >= 1 && h <= n) show(h - 1, false);
+  });
+
+  fit();
+  var start = parseInt((location.hash || '').slice(1), 10);
+  show((start >= 1 && start <= n) ? start - 1 : 0);
+})();
+</script>
+</body>
+</html>

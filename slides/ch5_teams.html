@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ch5 · Teams 多 Agent 协作 — Agno 学习幻灯片</title>
+<style>
+  :root {
+    --board: #f5f0e4;
+    --ink: #33312c;
+    --dim: #7a7466;
+    --yellow: #fff29e;
+    --pink: #ffc9dd;
+    --blue: #bde0fe;
+    --green: #c9f2c7;
+    --orange: #ffd8a8;
+    --red: #e5382e;
+    --marker: "Marker Felt", "Chalkboard SE", "Segoe Print", "Comic Sans MS", cursive;
+    --hand: "Chalkboard SE", "Segoe Print", "Comic Sans MS", "PingFang SC", cursive;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; background: #e3dcc8; overflow: hidden; }
+  body { font-family: var(--hand); color: var(--ink); }
+  #viewport { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }
+  #stage { width: 1280px; height: 720px; position: relative; flex: none; transform-origin: center center;
+    box-shadow: 0 24px 70px rgba(51,49,44,.28); }
+  .slide {
+    position: absolute; inset: 0; display: none; flex-direction: column;
+    padding: 56px 72px 76px; overflow: hidden; background: var(--board);
+    background-image: radial-gradient(rgba(51,49,44,.10) 1.2px, transparent 1.2px);
+    background-size: 26px 26px;
+  }
+  .slide.active { display: flex; }
+  .slide > * { position: relative; z-index: 1; }
+
+  .kicker {
+    font-family: var(--marker); font-size: 19px; color: var(--dim);
+    margin-bottom: 10px; letter-spacing: .04em;
+  }
+  .kicker::before { content: "✎ "; color: var(--red); }
+  h1 { font-family: var(--marker); font-size: 84px; line-height: 1.1; font-weight: 400; }
+  h2 {
+    font-family: var(--marker); font-size: 40px; line-height: 1.2; font-weight: 400;
+    margin-bottom: 24px; display: inline-block;
+  }
+  h2 .em, .em { color: var(--red); }
+  .wav { text-decoration: underline wavy var(--red) 2.5px; text-underline-offset: 7px; }
+  .hl { background: linear-gradient(transparent 55%, rgba(255,242,158,.9) 55%); padding: 0 4px; }
+  p.lead { font-size: 21px; color: var(--dim); line-height: 1.6; }
+  .spacer { flex: 1; }
+
+  /* ---------- sticky note ---------- */
+  .note {
+    position: relative; padding: 26px 22px 20px; color: var(--ink);
+    box-shadow: 3px 6px 14px rgba(51,49,44,.25);
+    font-size: 17.5px; line-height: 1.55;
+  }
+  .note::before {  /* washi tape */
+    content: ""; position: absolute; top: -13px; left: 50%; width: 96px; height: 26px;
+    transform: translateX(-50%) rotate(-2deg);
+    background: linear-gradient(105deg, rgba(255,255,255,.75), rgba(255,255,255,.4));
+    box-shadow: 0 1px 3px rgba(51,49,44,.15); opacity: .9;
+  }
+  .note h3 { font-family: var(--marker); font-size: 22px; margin-bottom: 8px; font-weight: 400; }
+  .note p small { color: #5d594e; font-size: 14.5px; }
+  .note.y { background: linear-gradient(175deg, #fff6b8, var(--yellow)); }
+  .note.p { background: linear-gradient(175deg, #ffd6e6, var(--pink)); }
+  .note.b { background: linear-gradient(175deg, #d0e9ff, var(--blue)); }
+  .note.g { background: linear-gradient(175deg, #d9f6d7, var(--green)); }
+  .note.o { background: linear-gradient(175deg, #ffe3c0, var(--orange)); }
+  .r1 { transform: rotate(-1.6deg); } .r2 { transform: rotate(1.3deg); }
+  .r3 { transform: rotate(-0.8deg); } .r4 { transform: rotate(2deg); }
+  .r5 { transform: rotate(-2.2deg); } .r6 { transform: rotate(0.7deg); }
+  .notes { display: grid; grid-template-columns: 1fr 1fr; gap: 30px 26px; }
+  .notes.c3 { grid-template-columns: 1fr 1fr 1fr; gap: 26px 22px; }
+  .notes.c4 { grid-template-columns: repeat(4, 1fr); gap: 24px 20px; }
+
+  /* pin */
+  .pin { position: absolute; top: -9px; left: 50%; transform: translateX(-50%);
+    width: 18px; height: 18px; border-radius: 50%; z-index: 2;
+    background: radial-gradient(circle at 35% 30%, #ff8a80, #c62828 70%);
+    box-shadow: 1px 3px 5px rgba(51,49,44,.4); }
+
+  /* code note */
+  .note.code { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 14.5px; line-height: 1.6; }
+  .note.code .k { color: #c22525; font-weight: 700; }
+  .note.code .s { color: #0969da; }
+  .note.code .c { color: #8a8578; }
+  .note.code .f { color: #6c5ce7; font-weight: 700; }
+  .note.code .a { color: #c22525; font-weight: 700; }
+  pre.note { white-space: pre-wrap; }
+  .codewrap { display: flex; gap: 30px; align-items: flex-start; }
+  .codewrap > .note.code { flex: 1.3; }
+  .codewrap > .side { flex: 1; display: flex; flex-direction: column; gap: 20px; }
+
+  .big { font-family: var(--marker); font-size: 30px; line-height: 1.45; }
+  .mono { font-family: "SF Mono", Menlo, monospace; font-size: .86em; color: #0969da; font-weight: 700; }
+
+  .quote {
+    font-family: var(--marker); font-size: 30px; line-height: 1.45; padding: 30px 34px;
+    background: linear-gradient(175deg, #fff6b8, var(--yellow));
+    box-shadow: 3px 6px 14px rgba(51,49,44,.25); transform: rotate(-1deg); position: relative;
+  }
+  .quote::before { content: ""; position: absolute; top: -13px; left: 50%; width: 96px; height: 26px;
+    transform: translateX(-50%) rotate(-2deg);
+    background: linear-gradient(105deg, rgba(255,255,255,.75), rgba(255,255,255,.4));
+    box-shadow: 0 1px 3px rgba(51,49,44,.15); }
+  .quote .src { display: block; margin-top: 14px; font-size: 15px; color: #6d685b; font-family: var(--hand); }
+
+  /* arrows */
+  .arrowflow { display: flex; align-items: center; justify-content: center; gap: 18px; }
+  .arrowflow .note { flex: 1; }
+  .arrowflow .arr { font-family: var(--marker); font-size: 44px; color: var(--red); flex: none; transform: rotate(-4deg); }
+
+  .q { counter-reset: q; }
+  .q li {
+    list-style: none; counter-increment: q; font-size: 21px; line-height: 1.5;
+    padding: 15px 0 15px 70px; position: relative; border-bottom: 2px dashed rgba(51,49,44,.18);
+  }
+  .q li::before {
+    content: "Q" counter(q); position: absolute; left: 0; top: 13px;
+    font-family: var(--marker); font-size: 22px; color: #fff;
+    background: var(--red); border-radius: 50% 48% 52% 47%; padding: 5px 11px;
+  }
+  .q li small { display: block; color: var(--dim); font-size: 15.5px; margin-top: 2px; }
+
+  /* cover */
+  .cover { justify-content: center; }
+  .cover .cluster { position: relative; height: 470px; }
+  .cover .note { position: absolute; }
+  .cover .n-title { left: 130px; top: 60px; width: 560px; padding: 40px 44px; }
+  .cover .n-title .big-en { font-family: var(--marker); font-size: 96px; line-height: 1; }
+  .cover .n-sub { left: 560px; top: 300px; width: 430px; }
+  .cover .n-tag { left: 150px; top: 330px; width: 330px; }
+  .cover .n-ch { left: 760px; top: 40px; width: 260px; text-align: center; font-family: var(--marker); font-size: 26px; }
+  .cover .meta { margin-top: 30px; text-align: center; font-size: 14px; color: var(--dim); letter-spacing: .2em; }
+
+  #bar { position: fixed; left: 0; bottom: 0; height: 4px; width: 0; background: var(--red); z-index: 50;
+    transition: width .25s ease; border-radius: 0 4px 4px 0; }
+  #hud { position: fixed; right: 22px; bottom: 16px; z-index: 50; font-family: var(--marker); font-size: 15px; color: #8a857a; }
+  #hint { position: fixed; left: 22px; bottom: 14px; z-index: 50; font-size: 12px; color: #8a857a; letter-spacing: .1em; }
+  kbd { font-family: var(--hand); font-size: 11px; color: var(--dim); border: 1.5px solid #b8b2a2;
+    border-radius: 4px; padding: 1px 7px; background: #fffdf5; }
+</style>
+</head>
+<body>
+<div id="viewport">
+  <div id="stage">
+
+    <!-- 1 cover -->
+    <section class="slide cover">
+      <div class="cluster">
+        <div class="note y n-title r1"><span class="pin"></span>
+          <div class="big-en">TEAMS</div>
+          <div style="font-family:var(--marker); font-size:44px; margin-top:6px;">多 Agent 协作</div>
+        </div>
+        <div class="note p n-sub r4">
+          一个人搞不定？<b>组个队。</b><br>
+          <small>Researcher 找资料、Writer 写稿、Reviewer 把关 —— 各干一行，leader 指挥。</small>
+        </div>
+        <div class="note b n-tag r5">
+          AGNO 学习笔记 · CHAPTER 05<br><small>examples/05_teams · 7 个示例 + 3 个测试</small>
+        </div>
+        <div class="note g n-ch r2">分工<br>委派<br>综合</div>
+      </div>
+      <p class="meta">COORDINATE · ROUTE · BROADCAST · TASKS</p>
+    </section>
+
+    <!-- 2 when -->
+    <section class="slide">
+      <div class="kicker">先想清楚</div>
+      <h2>到底<span class="wav">要不要</span>组队？</h2>
+      <div class="notes">
+        <div class="note g r1"><h3>✓ 该组队的信号</h3>
+          <p>任务横跨多个领域 / 需要多组不同工具<br>单 Agent 上下文装不下<br>希望每个成员职责足够窄</p></div>
+        <div class="note p r2"><h3>✗ 先别组队的信号</h3>
+          <p>任务在单一领域内<br>要控制 token 成本<br>心里没底 —— 不确定就先单 Agent</p></div>
+      </div>
+      <div class="spacer"></div>
+      <div class="quote">“Start simple, add agents when you hit limits.<br>Get this wrong and you've built a <span class="em">more expensive failure mode</span>.”
+        <span class="src">— docs.agno.com/teams/overview（官方劝退，最为真诚）</span>
+      </div>
+    </section>
+
+    <!-- 3 what is team -->
+    <section class="slide">
+      <div class="kicker">核心定义</div>
+      <h2>Team = 一个 leader + 一群<span class="hl">有角色</span>的成员</h2>
+      <div class="notes c3">
+        <div class="note y r1"><h3>members</h3><p>一组 Agent，甚至<b>子 Team</b>（可以嵌套）<br><small>官方建议给成员设稳定 id：成员选择和运行追踪都靠它</small></p></div>
+        <div class="note b r3"><h3>leader</h3><p>读每个成员的 <b>role</b>，决定把任务派给谁<br><small>role 写得越具体、越不重叠，派得越准</small></p></div>
+        <div class="note g r2"><h3>model 继承</h3><p>成员没配 model 时，自动用 Team 的 model<br><small>个别成员可用别的模型单配</small></p></div>
+      </div>
+      <div class="spacer"></div>
+      <p class="big">你把「分工表」写好，<span class="em">调度交给 leader</span>。</p>
+    </section>
+
+    <!-- 4 delegation flow -->
+    <section class="slide">
+      <div class="kicker">运行机理 · 来自 01_basic_team.py 的事件流</div>
+      <h2>委派是怎么<span class="wav">发生</span>的</h2>
+      <div class="arrowflow">
+        <div class="note b r1"><h3>① 分析</h3><p>leader 读输入，决定找谁</p></div>
+        <div class="arr">→</div>
+        <div class="note y r3"><h3>② 派活</h3><p>调用工具 <span class="mono">delegate_task_to_member</span><br><small>参数：member_id + task</small></p></div>
+        <div class="arr">→</div>
+        <div class="note g r2"><h3>③ 执行</h3><p>成员各自干活<br><small>异步时多个成员并发</small></p></div>
+        <div class="arr">→</div>
+        <div class="note p r4"><h3>④ 综合</h3><p>leader 汇总成最终回答</p></div>
+      </div>
+      <div class="spacer"></div>
+      <p class="lead">事件流里能清楚看到 leader 的每次 <span class="mono">delegate_task_to_member</span> 调用 —— 调试就看它。</p>
+    </section>
+
+    <!-- 5 four modes -->
+    <section class="slide">
+      <div class="kicker">四种协作模式 · 显式 mode= TeamMode.xxx</div>
+      <h2>一张<span class="wav">模式地图</span>，先存脑子</h2>
+      <div class="notes c4">
+        <div class="note y r1"><h3>coordinate</h3><p><b>默认</b>。leader 选成员、拆任务、综合结果<br><small>你的 01/02/05/06/07 都是它</small></p></div>
+        <div class="note b r2"><h3>route</h3><p>只选<b>一个</b>成员，结果直接返回，<b>不综合</b><br><small>03_math.py；成本最低</small></p></div>
+        <div class="note p r4"><h3>broadcast</h3><p>同一任务发给<b>全部</b>成员，再综合<br><small>04_collaborate.py</small></p></div>
+        <div class="note g r3"><h3>tasks</h3><p>leader 建共享任务列表，迭代执行<br><small>max_iterations 限循环；本仓库暂无示例</small></p></div>
+      </div>
+      <div class="spacer"></div>
+      <p class="big">⚠ 没有 <span class="mono">collaborate</span> 这个模式名 —— 你的目录为此踩过坑：多源同题研究叫 <span class="em">broadcast</span>。</p>
+    </section>
+
+    <!-- 6 route -->
+    <section class="slide">
+      <div class="kicker">模式特写 ① · examples/05_teams/03_math.py</div>
+      <h2><span class="mono">route</span>：分诊台，<span class="hl">只管转不管治</span></h2>
+      <div class="codewrap">
+        <pre class="note b code r1">math_team = <span class="f">Team</span>(
+    <span class="k">id</span>=<span class="s">"math_route_team"</span>,
+    <span class="k">mode</span>=TeamMode.<span class="a">route</span>,
+    <span class="k">members</span>=[addition_agent,
+               subtraction_agent,
+               multiplication_agent],
+    <span class="k">instructions</span>=[
+        <span class="s">"分析问题类型（加法/减法/乘法）"</span>,
+        <span class="s">"将任务路由给最匹配的一位专家"</span>,
+    ],
+)</pre>
+        <div class="side">
+          <div class="note y r2"><h3>为什么便宜</h3><p>leader 只做分类分发，<b>没有综合步骤</b> —— 延迟和 token 都省。</p></div>
+          <div class="note p r4"><h3>⚠ 你踩过的坑</h3><p>曾让 route 处理「先加再乘」—— 它只选<b>一个</b>成员！输入必须只含单一运算。</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7 broadcast -->
+    <section class="slide">
+      <div class="kicker">模式特写 ② · examples/05_teams/04_collaborate.py</div>
+      <h2><span class="mono">broadcast</span>：同一道题，<span class="hl">全员开考</span></h2>
+      <div class="codewrap">
+        <pre class="note p code r2">    <span class="k">mode</span>=TeamMode.<span class="a">broadcast</span>,
+    <span class="k">members</span>=[reddit_agent,
+               news_agent,
+               academic_agent],
+    <span class="k">instructions</span>=[
+        <span class="s">"将同一研究任务广播给所有成员"</span>,
+        <span class="s">"识别共识与分歧"</span>,
+        <span class="s">"生成全面的研究报告"</span>,
+    ],
+<span class="c"># 要成员并发：await team.aprint_response(...)</span></pre>
+        <div class="side">
+          <div class="note b r1"><h3>适合场景</h3><p>多源对照：社区观点 vs 媒体报道 vs 学术研究，leader 只做综合。</p></div>
+          <div class="note g r3"><h3>并发条件</h3><p>成员要真正同时跑，得用 <span class="mono">arun()</span> / <span class="mono">aprint_response()</span>。</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 8 coordinate -->
+    <section class="slide">
+      <div class="kicker">模式特写 ③ · examples/05_teams/01_basic_team.py</div>
+      <h2><span class="mono">coordinate</span>：instructions 是写给 <span class="hl">leader</span> 的</h2>
+      <div class="codewrap">
+        <pre class="note y code r3">    <span class="k">mode</span>=TeamMode.<span class="a">coordinate</span>,
+    <span class="k">instructions</span>=[
+        <span class="s">"必须先委派 Web Agent 搜索最新资料，不能跳过。"</span>,
+        <span class="s">"必须再把结果交给 Research Agent 分析。"</span>,
+        <span class="s">"最后汇总团队结论并保留来源链接。"</span>,
+    ],
+    <span class="k">stream</span>=<span class="a">True</span>, <span class="k">stream_events</span>=<span class="a">True</span>,
+    <span class="k">stream_member_events</span>=<span class="a">True</span>,</pre>
+        <div class="side">
+          <div class="note b r2"><h3>约束委派顺序</h3><p>「必须先…再…」写给 leader 看，规范它的派活路径。</p></div>
+          <div class="note g r4"><h3>流式三件套</h3><p><span class="mono">stream</span> 只流正文；<span class="mono">stream_events</span> 才有工具/错误事件；<span class="mono">stream_member_events</span> 让成员事件冒泡上来。</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 9 legacy flags -->
+    <section class="slide">
+      <div class="kicker">版本陷阱 · 你的 05_coordinate.py 踩过</div>
+      <h2>旧布尔开关 → 新模式<span class="wav">对照表</span></h2>
+      <div class="notes c3">
+        <div class="note b r1"><h3>respond_directly=True</h3><p>→ 等效 <span class="mono">route</span></p></div>
+        <div class="note p r3"><h3>delegate_to_all_members=True</h3><p>→ 等效 <span class="mono">broadcast</span><br><small>两个开关同设时 broadcast 胜出</small></p></div>
+        <div class="note g r2"><h3>两个都 False</h3><p>→ 等效 <span class="mono">coordinate</span></p></div>
+      </div>
+      <div class="spacer"></div>
+      <div class="note o r4" style="max-width:900px;">
+        <h3>✍ 记住这一条</h3>
+        <p>显式写 <span class="mono">mode=TeamMode.xxx</span> 会<b>覆盖</b>旧开关。你曾经在 coordinate 里设 <span class="mono">delegate_to_all_members=True</span>，结果实际跑成了 broadcast —— 新模式写明白，旧开关别碰。</p>
+      </div>
+    </section>
+
+    <!-- 10 cost -->
+    <section class="slide">
+      <div class="kicker">账本时间</div>
+      <h2>Team 的第一性问题：<span class="em">贵</span></h2>
+      <div class="quote" style="font-size:26px;">“A 4-member team can easily use <span class="em">10x the tokens</span> of a single agent.”
+        <span class="src">— docs.agno.com/teams/debugging-teams</span>
+      </div>
+      <div class="spacer"></div>
+      <div class="notes c4">
+        <div class="note p r1"><h3>coordinate</h3><p>成本 <b>高</b><br><small>分解 + 综合两头花</small></p></div>
+        <div class="note g r2"><h3>route</h3><p>成本 <b>低</b><br><small>只做选择</small></p></div>
+        <div class="note y r3"><h3>broadcast</h3><p>成本 <b>中</b><br><small>只综合一次</small></p></div>
+        <div class="note o r4"><h3>tasks</h3><p>成本 <b>高</b><br><small>规划 + 迭代循环</small></p></div>
+      </div>
+      <div class="spacer"></div>
+      <p class="big">降本三招：<span class="hl">减成员</span> · <span class="hl">让成员回答简短</span> · <span class="hl">能用 route 别 coordinate</span></p>
+    </section>
+
+    <!-- 11 debuggability -->
+    <section class="slide">
+      <div class="kicker">可调试性</div>
+      <h2>成员会<span class="wav">静默失败</span> —— leader 照样综合</h2>
+      <div class="notes c3">
+        <div class="note p r1"><h3>👀 看见成员</h3><p><span class="mono">show_member_responses=True</span>（print_response 里是单数 member）或读 <span class="mono">TeamRunOutput.member_responses</span></p></div>
+        <div class="note y r2"><h3>🔍 开调试</h3><p><span class="mono">debug_mode=True</span>，<span class="mono">debug_level=2</span> 更细；环境变量 <span class="mono">AGNO_DEBUG=True</span> 也行</p></div>
+        <div class="note b r3"><h3>🔁 防死循环</h3><p>委派停不下来？instructions 写死停止条件：<br><span class="mono">"Do not delegate more than 3 times per request"</span></p></div>
+      </div>
+      <div class="spacer"></div>
+      <p class="big">生产环境靠 AgentOS <span class="hl">tracing</span>，不靠终端肉眼。</p>
+    </section>
+
+    <!-- 12 fix what -->
+    <section class="slide">
+      <div class="kicker">排障决策</div>
+      <h2>成员输出差，<span class="wav">改哪一层</span>？</h2>
+      <div class="notes c3">
+        <div class="note b r1"><h3>选错成员</h3><p>→ 改 <b>role</b><br><small>让角色具体、互不重叠 —— role 重叠是派错人的头号原因</small></p></div>
+        <div class="note y r3"><h3>干得不完整</h3><p>→ 改成员的 <b>instructions</b><br><small>任务要求、输出格式、边界写清楚</small></p></div>
+        <div class="note g r2"><h3>拿不到数据</h3><p>→ 改 <b>工具配置</b><br><small>如 YFinance 的 enable_* 显式开关没开</small></p></div>
+      </div>
+      <div class="spacer"></div>
+      <p class="lead">只调用了一个成员？先查是不是 <span class="mono">route</span> 模式，再查 role 是否清晰、成员是否提前失败。</p>
+    </section>
+
+    <!-- 13 team vs workflow -->
+    <section class="slide">
+      <div class="kicker">划清边界</div>
+      <h2>Team <span class="em">≠</span> Workflow</h2>
+      <div class="notes">
+        <div class="note y r1"><h3>Team：动态分工</h3><p>步骤顺序由 leader 模型现场决定 —— instructions 能<b>引导</b>，但<b>不保证</b>确定性。适合开放式协作。</p></div>
+        <div class="note b r2"><h3>Workflow：固化流程</h3><p>业务上必须保证「采集 → 清洗 → 分析」这个顺序？那应该写 Workflow 的步骤流水线（ch6 的主角）。</p></div>
+      </div>
+      <div class="spacer"></div>
+      <p class="big">要<span class="hl">灵活</span>找 Team，要<span class="hl">确定</span>找 Workflow。</p>
+    </section>
+
+    <!-- 14 self-check -->
+    <section class="slide">
+      <div class="kicker">自测 · 合上书能答几条？</div>
+      <h2>检查点<span class="wav">四连问</span></h2>
+      <ul class="q">
+        <li>这个任务真的需要 Team 吗？判断信号是什么？<small>提示：多领域/多工具/上下文；否则先单 Agent</small></li>
+        <li>四种模式各一句话：coordinate / route / broadcast / tasks？<small>提示：分解综合 / 选一个直返 / 全员同题 / 任务列表迭代</small></li>
+        <li>成员输出质量差，role、instructions、工具分别对应哪种病根？<small>提示：选错人 / 干不好 / 没数据</small></li>
+        <li>降 token 的三招是什么？<small>提示：减成员、回答简短、用 route</small></li>
+      </ul>
+    </section>
+
+    <!-- 15 closing -->
+    <section class="slide cover">
+      <div class="cluster" style="height:430px;">
+        <div class="note y n-title r2" style="left:170px; top:40px; width:640px;"><span class="pin"></span>
+          <div style="font-family:var(--marker); font-size:42px; line-height:1.35;">
+            Team = 分工表 + 委派器<br>模式选对省一半钱<br>先问「真的需要队吗」
+          </div>
+        </div>
+        <div class="note b r5" style="left:840px; top:250px; width:330px;">
+          下一章 · ch6 Workflows<br><small>把重复任务固化成可审计的流水线</small>
+        </div>
+        <div class="note g r1" style="left:200px; top:300px; width:300px; text-align:center;">
+          按 <kbd>←</kbd> 复习 · <kbd>Home</kbd> 回封面
+        </div>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<div id="bar"></div>
+<div id="hud">1 / 15</div>
+<div id="hint"><kbd>←</kbd> <kbd>→</kbd> 翻页 · <kbd>Space</kbd> 下一页 · 点击左右两侧也可翻页</div>
+
+<script>
+(function () {
+  var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+  var n = slides.length;
+  var cur = 0;
+  var stage = document.getElementById('stage');
+  var bar = document.getElementById('bar');
+  var hud = document.getElementById('hud');
+
+  function fit() {
+    var s = Math.min(window.innerWidth / 1280, window.innerHeight / 720);
+    stage.style.transform = 'scale(' + s + ')';
+  }
+  function show(i, push) {
+    cur = Math.max(0, Math.min(n - 1, i));
+    slides.forEach(function (el, k) { el.classList.toggle('active', k === cur); });
+    bar.style.width = ((cur + 1) / n * 100) + '%';
+    hud.textContent = (cur + 1) + ' / ' + n;
+    if (push !== false) history.replaceState(null, '', '#' + (cur + 1));
+  }
+  function next() { show(cur + 1); }
+  function prev() { show(cur - 1); }
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); next(); }
+    else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); prev(); }
+    else if (e.key === 'Home') { show(0); }
+    else if (e.key === 'End') { show(n - 1); }
+  });
+  document.addEventListener('click', function (e) {
+    if (e.clientX > window.innerWidth * 0.5) next(); else prev();
+  });
+  window.addEventListener('resize', fit);
+  window.addEventListener('hashchange', function () {
+    var h = parseInt((location.hash || '').slice(1), 10);
+    if (h >= 1 && h <= n) show(h - 1, false);
+  });
+
+  fit();
+  var start = parseInt((location.hash || '').slice(1), 10);
+  show((start >= 1 && start <= n) ? start - 1 : 0);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agno 学习幻灯片 · 目录</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { min-height: 100%; }
+  body {
+    background: #0b0e14; color: #e5e7eb;
+    font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", sans-serif;
+    display: flex; align-items: center; justify-content: center; padding: 48px 24px;
+    background-image:
+      radial-gradient(800px 400px at 90% -10%, rgba(129,140,248,.10), transparent 60%),
+      radial-gradient(700px 400px at 0% 110%, rgba(34,211,238,.08), transparent 55%);
+  }
+  .wrap { width: 100%; max-width: 1080px; }
+  header { margin-bottom: 40px; }
+  .kicker { font-size: 13px; letter-spacing: .35em; color: #22d3ee; font-weight: 600; margin-bottom: 12px; }
+  h1 { font-size: 44px; font-weight: 800; letter-spacing: .01em; }
+  .sub { color: #94a3b8; margin-top: 10px; font-size: 16px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  a.deck {
+    display: block; text-decoration: none; color: inherit;
+    background: rgba(15,23,42,.75); border: 1px solid rgba(148,163,184,.18);
+    border-radius: 16px; padding: 26px 28px; position: relative; overflow: hidden;
+    transition: transform .18s ease, border-color .18s ease;
+  }
+  a.deck:hover { transform: translateY(-4px); border-color: var(--ac); }
+  a.deck::before {
+    content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 5px; background: var(--ac);
+  }
+  .no { font-family: "SF Mono", Menlo, monospace; font-size: 13px; color: var(--ac); letter-spacing: .2em; }
+  .deck h2 { font-size: 24px; margin: 10px 0 6px; font-weight: 800; }
+  .deck p { color: #94a3b8; font-size: 14.5px; line-height: 1.6; }
+  .deck .meta {
+    margin-top: 16px; display: flex; justify-content: space-between; align-items: center;
+    font-size: 12.5px; color: #64748b; font-family: "SF Mono", Menlo, monospace;
+  }
+  .deck .meta .go { color: var(--ac); }
+  footer { margin-top: 34px; color: #475569; font-size: 13px; line-height: 1.8; }
+  footer code { color: #94a3b8; background: rgba(148,163,184,.12); padding: 1px 7px; border-radius: 5px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="kicker">AGNO 学习笔记</div>
+    <h1>章节复习幻灯片</h1>
+    <p class="sub">每章一套独立皮肤，双击打开即放映。键盘 ←/→ 翻页，也支持 URL 带 #页码 直达。</p>
+  </header>
+  <div class="grid">
+    <a class="deck" style="--ac:#22d3ee" href="ch1_first_agent.html">
+      <div class="no">CHAPTER 01 · 深色科技风</div>
+      <h2>第一个 Agent</h2>
+      <p>Agent 是围绕无状态模型的有状态控制循环。解剖 01_agent.py、instructions 写法、三种运行姿势、AgentOS 初体验。</p>
+      <div class="meta"><span>14 页 · examples/01_first_agent</span><span class="go">打开 →</span></div>
+    </a>
+    <a class="deck" style="--ac:#e5382e" href="ch2_tools.html">
+      <div class="no">CHAPTER 02 · 瑞士杂志风</div>
+      <h2>工具调用 Tools</h2>
+      <p>工具就是函数，schema 自动生成；调不调模型说了算。自定义函数、Toolkit、hooks、并发执行与 MCP 速览。</p>
+      <div class="meta"><span>15 页 · examples/02_tools</span><span class="go">打开 →</span></div>
+    </a>
+    <a class="deck" style="--ac:#3dff73" href="ch3_storage_memory.html">
+      <div class="no">CHAPTER 03 · 黑客终端风</div>
+      <h2>存储与记忆</h2>
+      <p>db 管存、history 管刚才、memory 管长期，user_id 把它们隔开。两种记忆模式互斥、CRUD 正确姿势、多租户隔离实战。</p>
+      <div class="meta"><span>14 页 · examples/03_storage_memory</span><span class="go">打开 →</span></div>
+    </a>
+    <a class="deck" style="--ac:#f2c94c" href="ch5_teams.html">
+      <div class="no">CHAPTER 05 · 手绘便签风</div>
+      <h2>Teams 多 Agent 协作</h2>
+      <p>分工表 + 委派器。四种模式 coordinate / route / broadcast / tasks 怎么选，成本账怎么算，成员静默失败怎么查。</p>
+      <div class="meta"><span>15 页 · examples/05_teams</span><span class="go">打开 →</span></div>
+    </a>
+  </div>
+  <footer>
+    <p>ch4 Knowledge/RAG 等你写完 examples/04_knowledge 的示例后补做。内容均核对你本仓库代码与 docs.agno.com 官方文档。</p>
+    <p>命令行打开：<code>open slides/index.html</code></p>
+  </footer>
+</div>
+</body>
+</html>
