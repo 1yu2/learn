@@ -1,0 +1,1364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>CELESTIAL PIANO</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #04060f; }
+  canvas { display: block; }
+  #ui {
+    position: fixed; inset: 0; pointer-events: none; z-index: 10;
+    font-family: 'Avenir Next', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-weight: 300; text-transform: uppercase; color: #f2ecdf;
+  }
+  .tl { position: absolute; top: 28px; left: 32px; }
+  .tl h1 {
+    font-size: 13px; font-weight: 400; letter-spacing: .42em;
+    color: rgba(242,236,223,.95); text-shadow: 0 0 14px rgba(160,180,255,.5);
+  }
+  .tl p { margin-top: 9px; font-size: 9px; letter-spacing: .3em; color: rgba(242,236,223,.5); }
+  .bl {
+    position: absolute; left: 32px; bottom: 26px;
+    font-size: 9px; letter-spacing: .22em; color: rgba(242,236,223,.6); line-height: 2;
+  }
+  .br {
+    position: absolute; left: 50%; bottom: 26px; transform: translateX(-50%);
+    font-size: 9px; letter-spacing: .22em; color: rgba(242,236,223,.7); line-height: 2;
+    white-space: nowrap;
+  }
+  .scaleui {
+    position: absolute; right: 32px; bottom: 66px;
+    display: flex; align-items: center; gap: 12px; pointer-events: auto;
+    font-size: 9px; letter-spacing: .3em; color: rgba(242,236,223,.6);
+  }
+  .scaleui input[type="range"] {
+    -webkit-appearance: none; appearance: none;
+    width: 130px; height: 1px; background: rgba(242,236,223,.35); outline: none; cursor: pointer;
+  }
+  .scaleui input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 9px; height: 9px; border-radius: 50%;
+    background: rgba(255,255,255,.9); box-shadow: 0 0 8px rgba(255,255,255,.7);
+  }
+  .scaleui input[type="range"]::-moz-range-thumb {
+    width: 9px; height: 9px; border: none; border-radius: 50%;
+    background: rgba(255,255,255,.9); box-shadow: 0 0 8px rgba(255,255,255,.7);
+  }
+  #camhint {
+    position: absolute; top: 16%; left: 50%; transform: translateX(-50%);
+    font-size: 10px; letter-spacing: .42em; white-space: nowrap;
+    color: rgba(255,255,255,.85); text-shadow: 0 0 10px rgba(255,255,255,.5);
+    opacity: 0; transition: opacity 1.4s ease;
+  }
+  #camhint.show { opacity: 1; animation: breath 2.6s ease-in-out infinite; }
+  @keyframes breath { 0%,100% { opacity: .22; } 50% { opacity: .9; } }
+  #camhint.warn { color: rgba(255,190,150,.85); animation: none; opacity: 1; }
+</style>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+<div id="ui">
+  <div class="tl">
+    <h1>Celestial Piano</h1>
+    <p>A white grand upon the moon</p>
+  </div>
+  <div id="camhint">Open cam · play with hand</div>
+  <div class="bl">
+    qwertyuiop → c3–e4 &nbsp;·&nbsp; asdfghjkl;' → f4–b5 &nbsp;·&nbsp; 1–0 → black keys &nbsp;·&nbsp; +/− → scale
+  </div>
+  <div class="scaleui"><span>Scale</span><input id="scale" type="range" min="45" max="180" value="100"></div>
+  <div class="br" id="modehint">Click piano to play</div>
+</div>
+<video id="cam" playsinline muted style="display:none"></video>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+/* ============================================================
+   0. Renderer / scene / camera / post-processing
+   ============================================================ */
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+const MAX_PR = Math.min(window.devicePixelRatio || 1, 2);
+renderer.setPixelRatio(MAX_PR);
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.0;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+if ('transmissionResolutionScale' in renderer) renderer.transmissionResolutionScale = 0.5;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x04060f);
+
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.05, 3000);
+camera.position.set(1.5, 4.5, 15.5);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 0.72, 0.35);
+controls.enableDamping = true;
+controls.dampingFactor = 0.06;
+controls.autoRotate = true;
+controls.autoRotateSpeed = 0.5;
+controls.enablePan = false;
+controls.minDistance = 2.0;
+controls.maxDistance = 60.0;
+controls.maxPolarAngle = 1.62;
+
+// Environment reflections for the glossy lacquer — applied per-material (NOT as a
+// scene-wide IBL), so the moon is lit only by the grazing sun and keeps its terminator
+let envTex;
+{
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  envTex = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+  scene.environment = null;
+  pmrem.dispose();
+}
+
+// Lights — the night side of the moon must stay truly black (terminator look),
+// so ambient fill is minimal; the piano carries its own light
+scene.add(new THREE.AmbientLight(0x39435f, 0.08));
+scene.add(new THREE.HemisphereLight(0x93a5cc, 0x4a4a52, 0.06));
+const fillLight = new THREE.DirectionalLight(0x9db4e8, 0.25); // cool rim from behind-left
+fillLight.position.set(-10, 9, -14);
+scene.add(fillLight);
+const keyLight = new THREE.PointLight(0xffe9c9, 6.5, 10, 2);  // warm light over the piano
+keyLight.position.set(0, 3.2, 2.0);
+scene.add(keyLight);
+
+// Post-processing: bloom
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const bloomPass = new UnrealBloomPass(
+  new THREE.Vector2(window.innerWidth / 2, window.innerHeight / 2), 0.24, 0.3, 0.9);
+composer.addPass(bloomPass);
+composer.addPass(new OutputPass());
+
+/* ============================================================
+   1. Canvas-generated textures
+   ============================================================ */
+function softDotTexture(size = 64) {
+  const c = document.createElement('canvas'); c.width = c.height = size;
+  const g = c.getContext('2d');
+  const r = g.createRadialGradient(size/2, size/2, 0, size/2, size/2, size/2);
+  r.addColorStop(0, 'rgba(255,255,255,1)');
+  r.addColorStop(0.35, 'rgba(255,255,255,.55)');
+  r.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = r; g.fillRect(0, 0, size, size);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+
+// Four-pointed star: center glow + vertical/horizontal flares
+function starTexture(size = 128) {
+  const c = document.createElement('canvas'); c.width = c.height = size;
+  const g = c.getContext('2d');
+  const cx = size / 2;
+  const glow = g.createRadialGradient(cx, cx, 0, cx, cx, size * 0.22);
+  glow.addColorStop(0, 'rgba(255,255,255,1)');
+  glow.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = glow; g.fillRect(0, 0, size, size);
+  g.globalCompositeOperation = 'lighter';
+  const flare = (w, l, rot) => {
+    g.save(); g.translate(cx, cx); g.rotate(rot); g.scale(1, w / l);
+    const f = g.createRadialGradient(0, 0, 0, 0, 0, l);
+    f.addColorStop(0, 'rgba(255,255,255,.95)');
+    f.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = f;
+    g.beginPath(); g.arc(0, 0, l, 0, Math.PI * 2); g.fill(); g.restore();
+  };
+  flare(size * 0.045, size * 0.5, 0);
+  flare(size * 0.045, size * 0.5, Math.PI / 2);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+
+function glowTexture(size = 256) {
+  const c = document.createElement('canvas'); c.width = c.height = size;
+  const g = c.getContext('2d');
+  const r = g.createRadialGradient(size/2, size/2, 0, size/2, size/2, size/2);
+  r.addColorStop(0, 'rgba(255,255,255,.55)');
+  r.addColorStop(0.35, 'rgba(255,255,255,.18)');
+  r.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = r; g.fillRect(0, 0, size, size);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+
+// Tiling lunar regolith: fine noise + small craters (repeats over the ground sphere)
+function moonTexture() {
+  const S = 1024;
+  const c = document.createElement('canvas'); c.width = c.height = S;
+  const g = c.getContext('2d');
+  g.fillStyle = '#adadb2'; g.fillRect(0, 0, S, S);
+  const img = g.getImageData(0, 0, S, S), d = img.data;
+  for (let i = 0; i < d.length; i += 4) {
+    const n = (Math.random() - 0.5) * 30;
+    d[i] += n; d[i+1] += n; d[i+2] += n;
+  }
+  g.putImageData(img, 0, 0);
+  // soft large blotches (maria-like)
+  for (let i = 0; i < 26; i++) {
+    const x = Math.random() * S, y = Math.random() * S, r = 60 + Math.random() * 190;
+    const grd = g.createRadialGradient(x, y, 0, x, y, r);
+    const dark = Math.random() < 0.6;
+    grd.addColorStop(0, dark ? 'rgba(88,88,96,.16)' : 'rgba(220,220,228,.12)');
+    grd.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = grd;
+    g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
+  }
+  // small craters with bright rims
+  for (let i = 0; i < 240; i++) {
+    const x = Math.random() * S, y = Math.random() * S;
+    const r = 2 + Math.pow(Math.random(), 2.0) * 26;
+    const grd = g.createRadialGradient(x, y, r * 0.15, x, y, r);
+    grd.addColorStop(0, 'rgba(52,52,60,.5)');
+    grd.addColorStop(0.75, 'rgba(76,76,84,.26)');
+    grd.addColorStop(0.92, 'rgba(225,225,232,.4)');
+    grd.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = grd;
+    g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(16, 8);
+  return t;
+}
+
+const TEX = {
+  dot: softDotTexture(),
+  star: starTexture(),
+  glow: glowTexture(),
+};
+
+/* ============================================================
+   2. Deep space: 3-layer starfield, milky way, meteors, nebulae
+   ============================================================ */
+const spaceGroup = new THREE.Group();
+scene.add(spaceGroup);
+
+function makePointsMaterial(size, sizeAttenuation, opacity) {
+  return new THREE.PointsMaterial({
+    size, sizeAttenuation, map: TEX.dot, vertexColors: true,
+    transparent: true, opacity, depthWrite: false, blending: THREE.AdditiveBlending,
+  });
+}
+
+// -- Layer 1: far starfield shell
+let farStars, farStars2;
+{
+  const N = 2600, pos = new Float32Array(N * 3), col = new Float32Array(N * 3);
+  const tint = [new THREE.Color(0xffffff), new THREE.Color(0xbfd0ff), new THREE.Color(0xffe6c4)];
+  for (let i = 0; i < N; i++) {
+    const v = new THREE.Vector3().randomDirection().multiplyScalar(560 + Math.random() * 120);
+    pos.set([v.x, v.y, v.z], i * 3);
+    const c = tint[(Math.random() * 3) | 0].clone().multiplyScalar(0.5 + Math.random() * 0.5);
+    col.set([c.r, c.g, c.b], i * 3);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  farStars = new THREE.Points(g, makePointsMaterial(1.6, false, 0.9));
+  spaceGroup.add(farStars);
+
+  // a dimmer, denser sub-layer for depth
+  const N2 = 3400, pos2 = new Float32Array(N2 * 3), col2 = new Float32Array(N2 * 3);
+  for (let i = 0; i < N2; i++) {
+    const v = new THREE.Vector3().randomDirection().multiplyScalar(620 + Math.random() * 160);
+    pos2.set([v.x, v.y, v.z], i * 3);
+    const c = tint[(Math.random() * 3) | 0].clone().multiplyScalar(0.2 + Math.random() * 0.4);
+    col2.set([c.r, c.g, c.b], i * 3);
+  }
+  const g2 = new THREE.BufferGeometry();
+  g2.setAttribute('position', new THREE.BufferAttribute(pos2, 3));
+  g2.setAttribute('color', new THREE.BufferAttribute(col2, 3));
+  farStars2 = new THREE.Points(g2, makePointsMaterial(1.1, false, 0.7));
+  spaceGroup.add(farStars2);
+}
+
+// -- Layer 2: milky way band (a tilted great circle of stardust)
+let milkyWay;
+{
+  const N = 3800, pos = new Float32Array(N * 3), col = new Float32Array(N * 3);
+  const normal = new THREE.Vector3(0.32, 1, 0.18).normalize();
+  const a = new THREE.Vector3(1, 0, 0).cross(normal).normalize();
+  const b = normal.clone().cross(a).normalize();
+  const cA = new THREE.Color(0xaec4ff), cB = new THREE.Color(0xfff2dd);
+  for (let i = 0; i < N; i++) {
+    const t = Math.random() * Math.PI * 2;
+    const spread = (Math.random() + Math.random() + Math.random() - 1.5) * 0.16; // gaussian-ish
+    const r = 430 + (Math.random() - 0.5) * 60;
+    const p = a.clone().multiplyScalar(Math.cos(t))
+      .addScaledVector(b, Math.sin(t))
+      .addScaledVector(normal, spread).normalize().multiplyScalar(r);
+    pos.set([p.x, p.y, p.z], i * 3);
+    const c = (Math.random() < 0.7 ? cA : cB).clone().multiplyScalar(0.25 + Math.random() * 0.55);
+    col.set([c.r, c.g, c.b], i * 3);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  milkyWay = new THREE.Points(g, makePointsMaterial(1.5, false, 0.75));
+  spaceGroup.add(milkyWay);
+}
+
+// -- Layer 3: near drifting stardust around the piano
+const DUST_N = 260;
+let dust, dustVel;
+{
+  const pos = new Float32Array(DUST_N * 3), col = new Float32Array(DUST_N * 3);
+  dustVel = new Float32Array(DUST_N * 3);
+  for (let i = 0; i < DUST_N; i++) {
+    const r = 1.2 + Math.random() * 3.2, th = Math.random() * Math.PI * 2;
+    pos.set([Math.cos(th) * r, -0.15 + Math.random() * 2.8, Math.sin(th) * r + 0.4], i * 3);
+    const s = 0.35 + Math.random() * 0.5;
+    col.set([s * 0.9, s * 0.95, s], i * 3);
+    dustVel.set([(Math.random() - 0.5) * 0.03, 0.015 + Math.random() * 0.03, (Math.random() - 0.5) * 0.03], i * 3);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  dust = new THREE.Points(g, makePointsMaterial(0.035, true, 0.8));
+  scene.add(dust);
+}
+
+// -- Meteors (pooled)
+const meteors = [];
+let nextMeteorAt = 3;
+function spawnMeteor(now) {
+  let m = meteors.find(m => !m.active);
+  if (!m) {
+    if (meteors.length >= 3) return;
+    const TRAIL = 14;
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(TRAIL * 3), 3));
+    g.setAttribute('color', new THREE.BufferAttribute(new Float32Array(TRAIL * 3), 3));
+    const line = new THREE.Line(g, new THREE.LineBasicMaterial({
+      vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false,
+    }));
+    const head = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: TEX.star, color: 0xffffff, transparent: true,
+      blending: THREE.AdditiveBlending, depthWrite: false,
+    }));
+    head.scale.setScalar(2.2);
+    spaceGroup.add(line, head);
+    m = { line, head, trail: [], active: false, pos: new THREE.Vector3(), vel: new THREE.Vector3(), life: 0, maxLife: 1 };
+    meteors.push(m);
+  }
+  m.pos.copy(new THREE.Vector3().randomDirection());
+  m.pos.y = Math.abs(m.pos.y) * 0.9 + 0.1;
+  m.pos.normalize().multiplyScalar(460);
+  const tangent = new THREE.Vector3().randomDirection().cross(m.pos).normalize();
+  m.vel.copy(tangent).multiplyScalar(110 + Math.random() * 70);
+  m.maxLife = 1.4 + Math.random() * 1.2;
+  m.life = m.maxLife;
+  m.trail.length = 0;
+  m.active = true;
+  m.line.visible = m.head.visible = true;
+}
+function updateMeteors(dt, now) {
+  if (now > nextMeteorAt) { spawnMeteor(now); nextMeteorAt = now + 4 + Math.random() * 7; }
+  for (const m of meteors) {
+    if (!m.active) continue;
+    m.life -= dt;
+    if (m.life <= 0) { m.active = false; m.line.visible = m.head.visible = false; continue; }
+    m.pos.addScaledVector(m.vel, dt);
+    m.trail.unshift(m.pos.clone());
+    if (m.trail.length > 14) m.trail.pop();
+    const fade = Math.min(1, m.life / (m.maxLife * 0.5));
+    const p = m.line.geometry.attributes.position.array;
+    const c = m.line.geometry.attributes.color.array;
+    for (let i = 0; i < 14; i++) {
+      const v = m.trail[Math.min(i, m.trail.length - 1)] || m.pos;
+      p.set([v.x, v.y, v.z], i * 3);
+      const s = (1 - i / 14) * fade * 0.8;
+      c.set([s, s, s * 1.05], i * 3);
+    }
+    m.line.geometry.attributes.position.needsUpdate = true;
+    m.line.geometry.attributes.color.needsUpdate = true;
+    m.head.position.copy(m.pos);
+    m.head.material.opacity = fade;
+  }
+}
+
+// -- Nebula / mist glow patches
+const nebulae = [];
+{
+  const tints = [0x4a6fa5, 0x6a4a8c, 0x2a7a8c, 0x8c4a6a, 0x3a5a9c];
+  for (let i = 0; i < 5; i++) {
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: TEX.glow, color: tints[i], transparent: true,
+      opacity: 0.04 + Math.random() * 0.05, blending: THREE.AdditiveBlending, depthWrite: false,
+      rotation: Math.random() * Math.PI,
+    }));
+    const v = new THREE.Vector3().randomDirection().multiplyScalar(480);
+    s.position.copy(v);
+    s.scale.setScalar(260 + Math.random() * 220);
+    s.userData.rotSpeed = (Math.random() - 0.5) * 0.008;
+    spaceGroup.add(s);
+    nebulae.push(s);
+  }
+}
+
+/* ============================================================
+   3. The moon: a small moon whose bright surface is the ground
+   ============================================================ */
+let moon;
+{
+  const R = 120;
+  const bump = moonTexture();               // procedural tile: close-up micro relief
+  bump.repeat.set(48, 24);
+  const photo = new THREE.TextureLoader().load( // real lunar surface (CORS-enabled)
+    'https://raw.githubusercontent.com/mrdoob/three.js/r180/examples/textures/planets/moon_1024.jpg');
+  photo.colorSpace = THREE.SRGBColorSpace;
+  moon = new THREE.Mesh(
+    new THREE.SphereGeometry(R, 96, 64),
+    new THREE.MeshStandardMaterial({
+      map: photo, bumpMap: bump, bumpScale: 0.05, roughness: 0.96, metalness: 0,
+      color: 0xa8a9ae, // dim the photo texture toward the reference's dark regolith
+      envMapIntensity: 0, // no ambient IBL on the moon — keeps the terminator stark
+    })
+  );
+  moon.position.set(0, -R, 0);   // surface touches y=0 right under the piano
+  moon.rotation.x = 0.9;         // keep the pinched UV pole away from the piano
+  moon.receiveShadow = true;
+  scene.add(moon);
+
+  // sun grazing right at the horizon (side-on): the day/night terminator runs
+  // vertically through the frame — lit ground to the left, night to the right,
+  // and the piano stands in the dusk glow in between
+  const sun = new THREE.DirectionalLight(0xfff1dc, 14.0);
+  sun.position.set(-40, 3, -2);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(2048, 2048);
+  const sc = sun.shadow.camera;
+  sc.left = -7; sc.right = 7; sc.top = 7; sc.bottom = -7; sc.near = 26; sc.far = 55;
+  sc.updateProjectionMatrix();
+  sun.shadow.bias = -0.0004;
+  scene.add(sun, sun.target);
+
+  // gentle glow pool under the piano (keeps the stardust feel)
+  const pool = new THREE.Mesh(
+    new THREE.CircleGeometry(5.5, 48),
+    new THREE.MeshBasicMaterial({
+      map: TEX.glow, color: 0x5a70a8, transparent: true, opacity: 0.18,
+      blending: THREE.AdditiveBlending, depthWrite: false,
+    })
+  );
+  pool.rotation.x = -Math.PI / 2;
+  pool.position.y = 0.015;
+  scene.add(pool);
+}
+
+/* ============================================================
+   4. The white-lacquer grand piano (high-gloss piano paint)
+   ============================================================ */
+const piano = new THREE.Group();
+scene.add(piano);
+
+// piano scale state (mini <-> large, smooth)
+let pianoScaleCur = 1, pianoScaleTarget = 1;
+const SCALE_MIN = 0.45, SCALE_MAX = 1.8;
+
+const lacquerMat = new THREE.MeshPhysicalMaterial({
+  color: 0xfdfdfd, metalness: 0, roughness: 0.12,
+  clearcoat: 1, clearcoatRoughness: 0.06,
+  envMapIntensity: 0.55,
+});
+
+// Grand-piano outline in top view (x right, z forward toward the player)
+function grandOutline(scale = 1) {
+  const s = new THREE.Shape();
+  const P = (x, z) => [x * scale, -z * scale]; // shape coords: y = -z
+  s.moveTo(...P(-0.75, 1.00));
+  s.lineTo(...P(0.75, 1.00));
+  s.lineTo(...P(0.75, 0.35));
+  s.bezierCurveTo(...P(0.78, -0.55), ...P(0.30, -1.15), ...P(-0.05, -1.28));
+  s.quadraticCurveTo(...P(-0.42, -1.34), ...P(-0.75, -0.62));
+  s.lineTo(...P(-0.75, 1.00));
+  return s;
+}
+function extrudeTopView(shape, y0, depth, bevel = 0.008) {
+  const g = new THREE.ExtrudeGeometry(shape, {
+    depth, curveSegments: 24, bevelEnabled: bevel > 0,
+    bevelThickness: bevel, bevelSize: bevel, bevelSegments: 2,
+  });
+  g.rotateX(-Math.PI / 2); // shape XY -> world XZ, extrusion -> +y
+  g.translate(0, y0, 0);
+  return g;
+}
+
+// Body: a rim (outline with an inner hole) so the open top reveals the interior
+{
+  const outer = grandOutline();
+  outer.holes.push(grandOutline(0.9));
+  const body = new THREE.Mesh(extrudeTopView(outer, 0.64, 0.32), lacquerMat);
+  piano.add(body);
+  // bottom slab closes the underside
+  const bottom = new THREE.Mesh(extrudeTopView(grandOutline(0.98), 0.645, 0.02, 0), lacquerMat);
+  piano.add(bottom);
+}
+
+// Open lid, hinged along the spine (left edge), + prop rod
+let lidMesh;
+{
+  const g = extrudeTopView(grandOutline(0.99), 0, 0.018, 0.004);
+  g.translate(0.75, 0, 0); // hinge line (x=-0.75) -> local x=0
+  const lid = new THREE.Group();
+  lid.position.set(-0.75, 0.985, 0);
+  lid.rotation.z = 0.58;   // right (bent) side lifted open
+  lidMesh = new THREE.Mesh(g, lacquerMat);
+  lid.add(lidMesh);
+  piano.add(lid);
+
+  const rodBetween = (a, b, r) => {
+    const d = b.clone().sub(a), len = d.length();
+    const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, len, 10), lacquerMat);
+    m.position.copy(a).addScaledVector(d, 0.5);
+    m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize());
+    return m;
+  };
+  const attach = new THREE.Vector3(-0.75 + 1.15 * Math.cos(0.58), 0.985 + 1.15 * Math.sin(0.58), 0.15);
+  piano.add(rodBetween(new THREE.Vector3(0.52, 0.97, 0.15), attach, 0.012));
+}
+
+// Legs + bench
+{
+  const legGeo = new THREE.CylinderGeometry(0.032, 0.045, 0.64, 14);
+  [[-0.62, 0.82], [0.62, 0.82], [-0.35, -0.92]].forEach(([x, z]) => {
+    const leg = new THREE.Mesh(legGeo, lacquerMat);
+    leg.position.set(x, 0.32, z);
+    piano.add(leg);
+  });
+  const bench = new THREE.Group();
+  bench.position.set(0, 0, 2.05);
+  const top = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.045, 0.32), lacquerMat);
+  top.position.y = 0.46; bench.add(top);
+  [-0.26, 0.26].forEach(x => {
+    const panel = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.44, 0.28), lacquerMat);
+    panel.position.set(x, 0.23, 0); bench.add(panel);
+  });
+  piano.add(bench);
+}
+
+// Keyboard geometry constants
+const KBW = 1.32;                 // total keyboard width
+const WW = KBW / 52;              // white key width
+const KEY_TOP = 0.72;             // white key top surface y
+const BLACK_TOP = 0.744;
+const PIVOT_Z = 1.02;             // key fulcrum z
+const WHITE_LEN = 0.15, BLACK_LEN = 0.095;
+
+// Keybed + fallboard (covers the key pivots)
+{
+  const bed = new THREE.Mesh(new THREE.BoxGeometry(KBW + 0.06, 0.028, 0.28), lacquerMat);
+  bed.position.set(0, KEY_TOP - 0.032, PIVOT_Z + 0.03);
+  piano.add(bed);
+  const fall = new THREE.Mesh(new THREE.BoxGeometry(KBW + 0.09, 0.055, 0.08), lacquerMat);
+  fall.position.set(0, KEY_TOP + 0.014, PIVOT_Z - 0.045);
+  piano.add(fall);
+}
+
+// Interior: soundboard, pinblock, strings, tuning pins
+const whiteKeyX = wi => (wi + 0.5) * WW - KBW / 2;
+{
+  const board = new THREE.Mesh(
+    extrudeTopView(grandOutline(0.95), 0.79, 0.014, 0),
+    new THREE.MeshStandardMaterial({ color: 0x1c1409, roughness: 0.55, metalness: 0.1 }));
+  piano.add(board);
+
+  const pinblock = new THREE.Mesh(
+    new THREE.BoxGeometry(1.3, 0.02, 0.16),
+    new THREE.MeshStandardMaterial({ color: 0x241a10, roughness: 0.5 }));
+  pinblock.position.set(0, 0.845, 0.33);
+  piano.add(pinblock);
+}
+
+// 88 keys: build data + meshes. key[n]: midi = 21+n (A0..C8)
+const keys = [];
+const whiteToKey = [];
+{
+  const whiteMatBase = new THREE.MeshPhysicalMaterial({
+    color: 0xfbf8f1, roughness: 0.2, clearcoat: 0.7, clearcoatRoughness: 0.12,
+    envMapIntensity: 0.5, emissive: 0xfff3da, emissiveIntensity: 0,
+  });
+  const blackMatBase = new THREE.MeshPhysicalMaterial({
+    color: 0x14161b, roughness: 0.18, clearcoat: 0.9, clearcoatRoughness: 0.08,
+    envMapIntensity: 0.6, emissive: 0xbfd4ff, emissiveIntensity: 0,
+  });
+  const whiteGeo = new THREE.BoxGeometry(WW * 0.92, 0.018, WHITE_LEN);
+  const blackGeo = new THREE.BoxGeometry(WW * 0.55, 0.02, BLACK_LEN);
+  const BLACK_PC = new Set([1, 3, 6, 8, 10]);
+  let w = 0;
+  for (let n = 0; n < 88; n++) {
+    const midi = 21 + n;
+    const isBlack = BLACK_PC.has(midi % 12);
+    const x = isBlack ? w * WW - KBW / 2 : whiteKeyX(w);
+    const mat = (isBlack ? blackMatBase : whiteMatBase).clone();
+    const mesh = new THREE.Mesh(isBlack ? blackGeo : whiteGeo, mat);
+    mesh.position.z = (isBlack ? BLACK_LEN : WHITE_LEN) / 2 - 0.03;
+    const group = new THREE.Group();
+    group.position.set(x, (isBlack ? BLACK_TOP : KEY_TOP) - (isBlack ? 0.01 : 0.009), PIVOT_Z);
+    group.add(mesh);
+    piano.add(group);
+    const key = {
+      n, midi, isBlack, x, group, mesh, mat,
+      whiteIndex: isBlack ? -1 : w,
+      angle: 0, vel: 0, pressed: 0, targetAngle: 0,
+    };
+    mesh.userData.key = key;
+    keys.push(key);
+    if (!isBlack) { whiteToKey.push(key); w++; }
+  }
+}
+
+// Strings: one per note, fanned over the soundboard; vibrates when its note plays
+const STR_PTS = 9;
+const strings = [];
+{
+  for (let n = 0; n < 88; n++) {
+    const key = keys[n];
+    const frac = 1 - n / 87;
+    const len = 0.30 + 1.20 * Math.pow(frac, 1.35);
+    const x0 = key.x * 0.85, x1 = key.x * 0.70;
+    const z0 = 0.42, z1 = 0.42 - len;
+    const base = new Float32Array(STR_PTS * 3);
+    for (let i = 0; i < STR_PTS; i++) {
+      const u = i / (STR_PTS - 1);
+      base.set([x0 + (x1 - x0) * u, 0.865, z0 + (z1 - z0) * u], i * 3);
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(base.slice(), 3));
+    const line = new THREE.Line(g, new THREE.LineBasicMaterial({
+      color: 0xd8c9a3, transparent: true, opacity: 0.9,
+    }));
+    piano.add(line);
+    strings.push({ line, base, t0: -10, active: false });
+  }
+
+  // Tuning pins (instanced)
+  const pinGeo = new THREE.CylinderGeometry(0.006, 0.006, 0.035, 8);
+  const pinMat = new THREE.MeshStandardMaterial({ color: 0x8a8f98, metalness: 0.9, roughness: 0.35 });
+  const pins = new THREE.InstancedMesh(pinGeo, pinMat, 88);
+  const m4 = new THREE.Matrix4();
+  for (let n = 0; n < 88; n++) {
+    m4.setPosition(keys[n].x * 0.85, 0.875, 0.30 + (n % 2) * 0.06);
+    pins.setMatrixAt(n, m4);
+  }
+  piano.add(pins);
+}
+
+// A few breathing four-pointed star highlights on the keybed / body
+const breathStars = [];
+{
+  const spots = [
+    [-0.48, KEY_TOP + 0.06, 1.10, 0.03], [0.30, KEY_TOP + 0.055, 1.08, 0.024],
+    [0.62, 1.00, 0.52, 0.036], [-0.30, 1.00, -0.35, 0.033], [0.05, 0.99, 0.9, 0.021],
+  ];
+  for (const [x, y, z, s] of spots) {
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: TEX.star, color: 0xffffff, transparent: true,
+      blending: THREE.AdditiveBlending, depthWrite: false,
+    }));
+    sp.position.set(x, y, z);
+    sp.scale.setScalar(s);
+    sp.userData = { base: s, phase: Math.random() * Math.PI * 2, speed: 0.4 + Math.random() * 0.5 };
+    piano.add(sp);
+    breathStars.push(sp);
+  }
+}
+
+// the whole piano casts & receives shadows on the moon surface, and gets the env reflections
+piano.traverse(o => {
+  if (o.isMesh) {
+    o.castShadow = true; o.receiveShadow = true;
+    if (o.material && 'envMap' in o.material) o.material.envMap = envTex;
+  }
+});
+
+// Spark particle pool (white bursts at the key front on every press)
+const SPARK_MAX = 480;
+let sparkPoints, sparkPos, sparkCol, sparkVel, sparkLife, sparkCursor = 0;
+{
+  sparkPos = new Float32Array(SPARK_MAX * 3);
+  sparkCol = new Float32Array(SPARK_MAX * 3);
+  sparkVel = new Float32Array(SPARK_MAX * 3);
+  sparkLife = new Float32Array(SPARK_MAX * 2); // [life, maxLife]
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(sparkPos, 3));
+  g.setAttribute('color', new THREE.BufferAttribute(sparkCol, 3));
+  sparkPoints = new THREE.Points(g, new THREE.PointsMaterial({
+    size: 0.02, map: TEX.dot, vertexColors: true, transparent: true,
+    blending: THREE.AdditiveBlending, depthWrite: false,
+  }));
+  sparkPoints.frustumCulled = false;
+  scene.add(sparkPoints);
+}
+function spawnSparks(x, y, z, count = 14, boost = 1) {
+  for (let i = 0; i < count; i++) {
+    const k = sparkCursor; sparkCursor = (sparkCursor + 1) % SPARK_MAX;
+    sparkPos.set([x + (Math.random() - 0.5) * 0.012, y, z + (Math.random() - 0.5) * 0.01], k * 3);
+    const a = Math.random() * Math.PI * 2, up = (0.25 + Math.random() * 0.6) * boost;
+    sparkVel.set([Math.cos(a) * 0.25 * Math.random() * boost, up, (Math.sin(a) * 0.25 * Math.random() + 0.12) * boost], k * 3);
+    sparkLife[k * 2] = sparkLife[k * 2 + 1] = 0.3 + Math.random() * 0.25;
+  }
+}
+function updateSparks(dt) {
+  for (let k = 0; k < SPARK_MAX; k++) {
+    if (sparkLife[k * 2] <= 0) { sparkCol.set([0, 0, 0], k * 3); continue; }
+    sparkLife[k * 2] -= dt;
+    const i3 = k * 3;
+    sparkVel[i3 + 1] -= 1.1 * dt;
+    sparkVel[i3] *= (1 - 1.6 * dt); sparkVel[i3 + 2] *= (1 - 1.6 * dt);
+    sparkPos[i3] += sparkVel[i3] * dt;
+    sparkPos[i3 + 1] += sparkVel[i3 + 1] * dt;
+    sparkPos[i3 + 2] += sparkVel[i3 + 2] * dt;
+    const f = Math.max(0, sparkLife[k * 2] / sparkLife[k * 2 + 1]);
+    sparkCol.set([f, f, f], k * 3);
+  }
+  sparkPoints.geometry.attributes.position.needsUpdate = true;
+  sparkPoints.geometry.attributes.color.needsUpdate = true;
+}
+
+/* ============================================================
+   5. Audio: additive piano synth + generated-IR reverb + ambient
+   (Web Audio only, no samples; created on first user gesture)
+   ============================================================ */
+const AudioEngine = {
+  ctx: null, master: null, dry: null, wet: null, voices: new Map(),
+  noiseBuf: null, started: false,
+
+  init() {
+    if (this.ctx) return;
+    const ctx = this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+    this.master = ctx.createGain(); this.master.gain.value = 0.9;
+    const comp = ctx.createDynamicsCompressor();
+    comp.threshold.value = -14; comp.ratio.value = 3;
+    this.master.connect(comp); comp.connect(ctx.destination);
+
+    this.dry = ctx.createGain(); this.dry.gain.value = 0.75; this.dry.connect(this.master);
+    const conv = ctx.createConvolver(); conv.buffer = this.makeIR(4, 2.6);
+    this.wet = ctx.createGain(); this.wet.gain.value = 0.38;
+    conv.connect(this.wet); this.wet.connect(this.master);
+    this.reverbIn = conv;
+
+    // shared white-noise buffer for hammer strikes
+    const len = ctx.sampleRate | 0;
+    this.noiseBuf = ctx.createBuffer(1, len, ctx.sampleRate);
+    const d = this.noiseBuf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+  },
+
+  // ~4s exponential-decay noise impulse response ("space cathedral")
+  makeIR(seconds, decayPow) {
+    const sr = this.ctx.sampleRate, len = (sr * seconds) | 0;
+    const buf = this.ctx.createBuffer(2, len, sr);
+    for (let ch = 0; ch < 2; ch++) {
+      const d = buf.getChannelData(ch);
+      let lp = 0;
+      for (let i = 0; i < len; i++) {
+        lp = lp * 0.72 + (Math.random() * 2 - 1) * 0.28;   // soften highs over time
+        d[i] = lp * Math.pow(1 - i / len, decayPow) * 0.6;
+      }
+    }
+    return buf;
+  },
+
+  // Piano voice: partials at 1,2,3,4,5.4 x fundamental + bandpassed strike noise
+  noteOn(midi, velocity = 1) {
+    if (!this.ctx) return;
+    this.noteOff(midi, 0.03); // retrigger: damp the previous voice fast
+    const ctx = this.ctx, t = ctx.currentTime;
+    const f = 440 * Math.pow(2, (midi - 69) / 12);
+    const out = ctx.createGain(); out.connect(this.dry); out.connect(this.reverbIn);
+    const PART = [1, 2, 3, 4, 5.4], AMP = [1, 0.45, 0.25, 0.13, 0.07];
+    const oscs = [], envs = [];
+    const base = Math.min(6, 3.4 * Math.pow(110 / f, 0.55)); // low notes ring longer
+    for (let k = 0; k < PART.length; k++) {
+      const o = ctx.createOscillator();
+      o.type = 'sine';
+      o.frequency.value = f * PART[k];
+      o.detune.value = (Math.random() - 0.5) * 4;
+      const e = ctx.createGain();
+      const peak = 0.2 * velocity * AMP[k];
+      const atk = 0.003 + 0.002 * k;
+      const dec = base / (1 + 0.6 * k);                      // higher partials fade faster
+      e.gain.setValueAtTime(0, t);
+      e.gain.linearRampToValueAtTime(peak, t + atk);
+      e.gain.exponentialRampToValueAtTime(0.0001, t + atk + dec);
+      o.connect(e); e.connect(out);
+      o.start(t); o.stop(t + atk + dec + 0.1);
+      oscs.push(o); envs.push(e);
+    }
+    // hammer strike: short band-passed noise burst
+    const ns = ctx.createBufferSource(); ns.buffer = this.noiseBuf;
+    const bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass'; bp.frequency.value = 1200 + midi * 15; bp.Q.value = 1.1;
+    const ng = ctx.createGain();
+    ng.gain.setValueAtTime(0.12 * velocity, t);
+    ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
+    ns.connect(bp); bp.connect(ng); ng.connect(out);
+    ns.start(t); ns.stop(t + 0.08);
+    oscs.push(ns);
+
+    this.voices.set(midi, { out, oscs, envs });
+  },
+
+  noteOff(midi, release = 0.09) {
+    const v = this.voices.get(midi);
+    if (!v) return;
+    this.voices.delete(midi);
+    const t = this.ctx.currentTime;
+    for (const e of v.envs) {
+      e.gain.cancelScheduledValues(t);
+      e.gain.setTargetAtTime(0, t, release);
+    }
+    for (const o of v.oscs) { try { o.stop(t + release * 5); } catch (_) {} }
+    setTimeout(() => v.out.disconnect(), release * 5000 + 200);
+  },
+
+  // Ambient bed: brown-noise pad + drifting band + faint sparkle + fifth drone
+  startAmbient() {
+    if (!this.ctx || this.started) return;
+    this.started = true;
+    const ctx = this.ctx, t = ctx.currentTime;
+    const amb = ctx.createGain();
+    amb.gain.setValueAtTime(0, t);
+    amb.gain.linearRampToValueAtTime(1, t + 15); // fade in over ~15 s
+    amb.connect(this.master);
+
+    // brown noise loop
+    const len = ctx.sampleRate * 6;
+    const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    let b = 0, peak = 0;
+    for (let i = 0; i < len; i++) {
+      b = (b + 0.02 * (Math.random() * 2 - 1)) / 1.02;
+      d[i] = b; peak = Math.max(peak, Math.abs(b));
+    }
+    for (let i = 0; i < len; i++) d[i] /= peak;
+    const brown = ctx.createBufferSource(); brown.buffer = buf; brown.loop = true;
+
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 220;
+    const padG = ctx.createGain(); padG.gain.value = 0.16;
+    brown.connect(lp); lp.connect(padG); padG.connect(amb);
+
+    // slowly drifting band (airy whistle)
+    const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 600; bp.Q.value = 7;
+    const bpG = ctx.createGain(); bpG.gain.value = 0.028;
+    brown.connect(bp); bp.connect(bpG); bpG.connect(amb);
+    const lfo = ctx.createOscillator(); lfo.frequency.value = 0.045;
+    const lfoG = ctx.createGain(); lfoG.gain.value = 380;
+    lfo.connect(lfoG); lfoG.connect(bp.frequency); lfo.start(t);
+
+    // faint high sparkle
+    const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 7200;
+    const hpG = ctx.createGain(); hpG.gain.value = 0.004;
+    brown.connect(hp); hp.connect(hpG); hpG.connect(amb);
+    const lfo2 = ctx.createOscillator(); lfo2.frequency.value = 0.11;
+    const lfo2G = ctx.createGain(); lfo2G.gain.value = 0.003;
+    lfo2.connect(lfo2G); lfo2G.connect(hpG.gain); lfo2.start(t);
+    brown.start(t);
+
+    // quiet two-note drone (A1 + E2, a fifth apart)
+    for (const fq of [55, 82.41]) {
+      const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = fq;
+      const g = ctx.createGain(); g.gain.value = 0.035;
+      o.connect(g); g.connect(amb); o.start(t);
+    }
+  },
+};
+
+/* ============================================================
+   6. Interaction: mouse / keyboard / camera hand / head follow
+   ============================================================ */
+let mode = 'orbit';            // 'orbit' | 'play'
+let flying = null;             // camera tween state
+let baseQuat = null;           // camera orientation at the playing seat
+const orbitCam = { pos: new THREE.Vector3(), quat: new THREE.Quaternion() };
+
+const raycaster = new THREE.Raycaster();
+const ndc = new THREE.Vector2();
+const keyMeshes = keys.map(k => k.mesh);
+function setNDC(e) {
+  ndc.x = (e.clientX / window.innerWidth) * 2 - 1;
+  ndc.y = -(e.clientY / window.innerHeight) * 2 + 1;
+  raycaster.setFromCamera(ndc, camera);
+}
+function pickKey() {
+  const h = raycaster.intersectObjects(keyMeshes, false)[0];
+  return h ? h.object.userData.key : null;
+}
+
+// ---- piano scaling (mini <-> large, sound & playability untouched) ----
+const scaleInput = document.getElementById('scale');
+function setScaleTarget(v) {
+  pianoScaleTarget = Math.min(SCALE_MAX, Math.max(SCALE_MIN, v));
+  scaleInput.value = Math.round(pianoScaleTarget * 100);
+}
+scaleInput.addEventListener('input', () => setScaleTarget(scaleInput.value / 100));
+
+// ---- key press / release (visual + audio + particles + string) ----
+function pressKey(key, vel = 0.9) {
+  if (key.pressed) return;
+  key.pressed = 1;
+  key.targetAngle = key.isBlack ? 0.05 : 0.058;
+  AudioEngine.noteOn(key.midi, vel);
+  const st = strings[key.n];
+  st.t0 = elapsed; st.active = true;
+  const s = pianoScaleCur;
+  spawnSparks(key.x * s, (KEY_TOP + 0.006) * s,
+    (PIVOT_Z + (key.isBlack ? BLACK_LEN : WHITE_LEN) - 0.045) * s,
+    key.isBlack ? 9 : 14, s);
+}
+function releaseKey(key) {
+  if (!key.pressed) return;
+  key.pressed = 0;
+  key.targetAngle = 0;
+  AudioEngine.noteOff(key.midi);
+}
+function releaseAllKeys() { for (const k of keys) releaseKey(k); }
+
+// ---- camera flight between orbit and the playing seat ----
+function flyTo(toP, lookAt, dur, onDone) {
+  const m = new THREE.Matrix4().lookAt(toP, lookAt, new THREE.Vector3(0, 1, 0));
+  flying = {
+    t: 0, dur, fromP: camera.position.clone(), toP: toP.clone(),
+    fromQ: camera.quaternion.clone(),
+    toQ: new THREE.Quaternion().setFromRotationMatrix(m),
+    onDone,
+  };
+  controls.enabled = false;
+}
+const SEAT_POS = new THREE.Vector3(0, 1.42, 2.52);
+const SEAT_LOOK = new THREE.Vector3(0, 0.71, 1.02);
+function enterPlay() {
+  orbitCam.pos.copy(camera.position);
+  orbitCam.quat.copy(camera.quaternion);
+  mode = 'play';
+  hintMode();
+  const s = pianoScaleCur;
+  flyTo(SEAT_POS.clone().multiplyScalar(s), SEAT_LOOK.clone().multiplyScalar(s), 1.7, () => {
+    baseQuat = camera.quaternion.clone();
+    yawOff = pitchOff = 0;
+  });
+  showCamHintOnce();
+  initHands();
+}
+function exitPlay() {
+  releaseAllKeys();
+  for (const sl of Object.values(handSlots)) { sl.pressed = false; sl.g.visible = false; }
+  mode = 'orbit';
+  hintMode();
+  flyTo(orbitCam.pos, controls.target, 1.5, () => { controls.enabled = true; });
+}
+function hintMode() {
+  document.getElementById('modehint').textContent = mode === 'play'
+    ? 'Esc or click lid to leave · hold & slide for glissando'
+    : 'Click piano to play';
+}
+
+// ---- mouse: click to sit / leave, click & hold-slide glissando ----
+let downX = 0, downY = 0, dragging = false, dragKey = null;
+let mouseNX = 0, mouseNY = 0, yawOff = 0, pitchOff = 0;
+renderer.domElement.addEventListener('pointerdown', e => {
+  firstGesture();
+  downX = e.clientX; downY = e.clientY;
+  if (mode === 'play' && !flying) {
+    setNDC(e);
+    const k = pickKey();
+    if (k) { dragging = true; dragKey = k; pressKey(k, 0.9); }
+  }
+});
+window.addEventListener('pointermove', e => {
+  mouseNX = (e.clientX / window.innerWidth) * 2 - 1;
+  mouseNY = (e.clientY / window.innerHeight) * 2 - 1;
+  if (dragging && mode === 'play' && !flying) {
+    setNDC(e);
+    const k = pickKey();
+    if (k && k !== dragKey) {
+      if (dragKey) releaseKey(dragKey);
+      dragKey = k; pressKey(k, 0.85);
+    }
+  }
+});
+window.addEventListener('pointerup', () => {
+  if (dragging) { if (dragKey) releaseKey(dragKey); dragging = false; dragKey = null; }
+});
+window.addEventListener('click', e => {
+  if (e.target !== renderer.domElement || flying) return;
+  if (Math.hypot(e.clientX - downX, e.clientY - downY) > 6) return; // it was a drag
+  setNDC(e);
+  if (mode === 'orbit') {
+    if (raycaster.intersectObject(piano, true).length) enterPlay();
+  } else if (raycaster.intersectObject(lidMesh, false).length) {
+    exitPlay();
+  }
+});
+
+// ---- computer keyboard ----
+const KEYMAP = new Map();
+['KeyQ','KeyW','KeyE','KeyR','KeyT','KeyY','KeyU','KeyI','KeyO','KeyP']
+  .forEach((c, i) => KEYMAP.set(c, [48,50,52,53,55,57,59,60,62,64][i]));   // C3–E4
+['KeyA','KeyS','KeyD','KeyF','KeyG','KeyH','KeyJ','KeyK','KeyL','Semicolon','Quote']
+  .forEach((c, i) => KEYMAP.set(c, [65,67,69,71,72,74,76,77,79,81,83][i]));   // F4–B5
+['Digit1','Digit2','Digit3','Digit4','Digit5','Digit6','Digit7','Digit8','Digit9','Digit0']
+  .forEach((c, i) => KEYMAP.set(c, [49,51,54,56,58,61,63,66,68,70][i]));       // black keys
+const kbdHeld = new Map();
+window.addEventListener('keydown', e => {
+  firstGesture();
+  if (e.code === 'Escape') { if (mode === 'play' && !flying) exitPlay(); return; }
+  if (e.code === 'Equal' || e.code === 'NumpadAdd') { setScaleTarget(pianoScaleTarget + 0.1); return; }
+  if (e.code === 'Minus' || e.code === 'NumpadSubtract') { setScaleTarget(pianoScaleTarget - 0.1); return; }
+  if (e.repeat) return;
+  const midi = KEYMAP.get(e.code);
+  if (midi == null) return;
+  e.preventDefault();
+  const key = keys[midi - 21];
+  kbdHeld.set(e.code, key);
+  pressKey(key, 0.9);
+});
+window.addEventListener('keyup', e => {
+  const key = kbdHeld.get(e.code);
+  if (key) { kbdHeld.delete(e.code); releaseKey(key); }
+});
+
+// ---- camera-hand ("constellation hand") tracking ----
+const video = document.getElementById('cam');
+let landmarker = null, handInit = false, lastVideoTime = -1;
+let camHintDone = false;
+function showCamHintOnce() {
+  if (camHintDone) return;
+  camHintDone = true;
+  const el = document.getElementById('camhint');
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 10000); // gone forever after 10 s
+}
+function flashCamWarn(text) {
+  const el = document.getElementById('camhint');
+  el.textContent = text;
+  el.classList.add('show', 'warn');
+  setTimeout(() => el.classList.remove('show', 'warn'), 4000);
+}
+async function initHands() {
+  if (handInit) return;
+  handInit = true;
+  try {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error('getUserMedia unavailable');
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 }, audio: false });
+    video.srcObject = stream;
+    await video.play();
+    const vision = await import('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs');
+    const fileset = await vision.FilesetResolver.forVisionTasks(
+      'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm');
+    landmarker = await vision.HandLandmarker.createFromOptions(fileset, {
+      baseOptions: {
+        modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',
+        delegate: 'GPU',
+      },
+      runningMode: 'VIDEO',
+      numHands: 2,
+    });
+  } catch (err) {
+    console.warn('Hand tracking unavailable:', err);
+    flashCamWarn('Camera unavailable · mouse & keys only');
+  }
+}
+
+function makeHandSlot() {
+  const g = new THREE.Group();
+  const sprites = [];
+  for (let i = 0; i < 5; i++) {
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: TEX.star, color: 0xffffff, transparent: true,
+      blending: THREE.AdditiveBlending, depthTest: false, depthWrite: false,
+    }));
+    sp.scale.setScalar(0.05);
+    sp.renderOrder = 1000;
+    g.add(sp); sprites.push(sp);
+  }
+  const lg = new THREE.BufferGeometry();
+  lg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(5 * 3), 3));
+  const line = new THREE.Line(lg, new THREE.LineBasicMaterial({
+    color: 0xc9d2e8, transparent: true, opacity: 0.7,
+    blending: THREE.AdditiveBlending, depthTest: false, depthWrite: false,
+  }));
+  line.renderOrder = 999;
+  line.frustumCulled = false;
+  g.add(line);
+  g.visible = false;
+  scene.add(g);
+  return { g, sprites, line, dS: null, dPrev: null, prevT: null, lastSeen: -1,
+           pressed: false, keyIndex: -1, dStrike: 0, lastStrike: -1 };
+}
+const handSlots = { Left: makeHandSlot(), Right: makeHandSlot() };
+const TIP = [4, 8, 12, 16, 20]; // thumb,index,middle,ring,pinky fingertips
+const _tipV = new THREE.Vector3();
+function tipWorld(lm, out) {
+  const nx = 1 - lm.x;                                  // mirrored webcam x
+  const wf = Math.min(51, Math.max(0, nx * 52 - 0.5));  // across the 52 white keys
+  const z = lm.z || 0;
+  const hover = Math.min(0.13, Math.max(0.02, 0.10 + z * 0.6));
+  const s = pianoScaleCur;
+  out.set(whiteKeyX(wf) * s, (KEY_TOP + hover) * s,
+    (PIVOT_Z + 0.02 + Math.min(0.13, Math.max(0, -z)) * 1.1) * s);
+}
+function processHand(slot, lm, now) {
+  const dt = Math.max(1e-3, now - (slot.prevT ?? now - 1 / 60));
+  slot.prevT = now;
+  slot.lastSeen = now;
+  slot.g.visible = true;
+  const posAttr = slot.line.geometry.attributes.position;
+  for (let k = 0; k < 5; k++) {
+    tipWorld(lm[TIP[k]], _tipV);
+    slot.sprites[k].position.lerp(_tipV, 0.55);
+    posAttr.setXYZ(k, slot.sprites[k].position.x, slot.sprites[k].position.y, slot.sprites[k].position.z);
+    if (k !== 1) slot.sprites[k].scale.setScalar(0.05 * pianoScaleCur);
+  }
+  posAttr.needsUpdate = true;
+
+  // strike detection: index depth relative to the wrist–middle-knuckle anchor
+  const anchorZ = (lm[0].z + lm[9].z) / 2;
+  const d = lm[8].z - anchorZ;
+  slot.dS = slot.dS === null ? d : slot.dS + (d - slot.dS) * 0.5;
+  const vel = (slot.dS - (slot.dPrev === null ? slot.dS : slot.dPrev)) / dt;
+  slot.dPrev = slot.dS;
+  const nx = 1 - lm[8].x;
+  const wi = Math.round(Math.min(51, Math.max(0, nx * 52 - 0.5)));
+
+  if (!slot.pressed && vel < -0.5 && now - slot.lastStrike > 0.12) {
+    slot.pressed = true; slot.dStrike = slot.dS; slot.keyIndex = wi; slot.lastStrike = now;
+    const key = whiteToKey[wi];
+    if (key) pressKey(key, 0.95);
+  } else if (slot.pressed) {
+    if (wi !== slot.keyIndex) {           // held & slid sideways -> glissando
+      releaseSlotKey(slot);
+      slot.pressed = true; slot.dStrike = slot.dS; slot.keyIndex = wi; slot.lastStrike = now;
+      const key = whiteToKey[wi];
+      if (key) pressKey(key, 0.9);
+    } else if (slot.dS > slot.dStrike + 0.03 || vel > 0.35) {
+      releaseSlotKey(slot);
+    }
+  }
+  // index star feedback: bigger & warmer while its key is down
+  const target = (slot.pressed ? 0.105 : 0.05) * pianoScaleCur;
+  const cur = slot.sprites[1].scale.x;
+  slot.sprites[1].scale.setScalar(cur + (target - cur) * Math.min(1, dt * 12));
+  slot.sprites[1].material.color.setHex(slot.pressed ? 0xfff2cf : 0xffffff);
+}
+function releaseSlotKey(slot) {
+  if (!slot.pressed) return;
+  slot.pressed = false;
+  const key = whiteToKey[slot.keyIndex];
+  if (key) releaseKey(key);
+}
+function updateHands(now) {
+  if (landmarker && video.readyState >= 2 && mode === 'play' && !flying) {
+    if (video.currentTime !== lastVideoTime) {
+      lastVideoTime = video.currentTime;
+      let res = null;
+      try { res = landmarker.detectForVideo(video, now * 1000); } catch (_) {}
+      if (res && res.landmarks) {
+        for (let i = 0; i < res.landmarks.length; i++) {
+          const label = (res.handednesses && res.handednesses[i] && res.handednesses[i][0])
+            ? res.handednesses[i][0].categoryName : (i === 0 ? 'Left' : 'Right');
+          const slot = handSlots[label] || handSlots.Left;
+          processHand(slot, res.landmarks[i], now);
+        }
+      }
+    }
+  }
+  // hide (and silence) hands that disappeared
+  for (const slot of Object.values(handSlots)) {
+    if (slot.g.visible && now - slot.lastSeen > 0.25) {
+      slot.g.visible = false;
+      releaseSlotKey(slot);
+    }
+  }
+}
+
+// ---- audio unlock on the very first gesture ----
+let gestured = false;
+function firstGesture() {
+  if (gestured) return;
+  gestured = true;
+  AudioEngine.init();
+  AudioEngine.startAmbient();
+}
+
+/* ============================================================
+   7. Main loop + adaptive resolution + resize
+   ============================================================ */
+const clock = new THREE.Clock();
+let elapsed = 0;
+
+// adaptive pixel ratio: measure rolling frame time, step down when slow
+const prLevels = [MAX_PR, 1.5, 1.25, 1, 0.8].filter((v, i, a) => v <= MAX_PR && a.indexOf(v) === i);
+let prIndex = 0, emaDt = 1 / 60, perfTimer = 0;
+function applyPR() {
+  const p = prLevels[prIndex];
+  renderer.setPixelRatio(p);
+  composer.setPixelRatio(p);
+  onResize();
+}
+
+const _euler = new THREE.Euler();
+const _qOff = new THREE.Quaternion();
+function headFollow(dt) {
+  if (!baseQuat) return;
+  const tY = -mouseNX * THREE.MathUtils.degToRad(15);
+  const tP = -mouseNY * THREE.MathUtils.degToRad(10);
+  yawOff += (tY - yawOff) * Math.min(1, dt * 5);
+  pitchOff += (tP - pitchOff) * Math.min(1, dt * 5);
+  _qOff.setFromEuler(_euler.set(pitchOff, yawOff, 0));
+  camera.quaternion.copy(baseQuat).multiply(_qOff);
+}
+
+function updateKeys(dt) {
+  for (const key of keys) {
+    const target = key.targetAngle || 0;
+    // damped spring around the fulcrum
+    key.vel += ((target - key.angle) * 260 - key.vel * 18) * dt;
+    key.angle += key.vel * dt;
+    key.group.rotation.x = key.angle;
+    const eTarget = key.pressed ? (key.isBlack ? 0.8 : 0.28) : 0;
+    key.mat.emissiveIntensity += (eTarget - key.mat.emissiveIntensity) * Math.min(1, dt * 14);
+  }
+}
+
+function updateStrings() {
+  for (let n = 0; n < 88; n++) {
+    const s = strings[n];
+    if (!s.active) continue;
+    const t = elapsed - s.t0;
+    const attr = s.line.geometry.attributes.position;
+    if (t > 2.2) {
+      s.active = false;
+      attr.array.set(s.base);
+      attr.needsUpdate = true;
+      continue;
+    }
+    const amp = 0.01 * Math.exp(-t / 0.5);
+    const wob = Math.sin(t * 34);
+    for (let i = 1; i < STR_PTS - 1; i++) {
+      const u = i / (STR_PTS - 1);
+      attr.array[i * 3 + 1] = s.base[i * 3 + 1] + amp * wob * Math.sin(Math.PI * u);
+    }
+    attr.needsUpdate = true;
+  }
+}
+
+function updateDust(dt) {
+  const p = dust.geometry.attributes.position.array;
+  for (let i = 0; i < DUST_N; i++) {
+    const i3 = i * 3;
+    p[i3] += dustVel[i3] * dt;
+    p[i3 + 1] += dustVel[i3 + 1] * dt;
+    p[i3 + 2] += dustVel[i3 + 2] * dt;
+    if (p[i3 + 1] > 2.8) p[i3 + 1] = -0.15;
+    const r2 = p[i3] * p[i3] + (p[i3 + 2] - 0.4) * (p[i3 + 2] - 0.4);
+    if (r2 > 20) { // drifted too far out -> wrap back
+      p[i3] *= -0.9; p[i3 + 2] = 0.4 + (p[i3 + 2] - 0.4) * -0.9;
+    }
+  }
+  dust.geometry.attributes.position.needsUpdate = true;
+  dust.rotation.y += dt * 0.02;
+}
+
+// smooth mini<->large scaling; every detail lives in local space so it survives scaling
+function updateScale(dt) {
+  pianoScaleCur += (pianoScaleTarget - pianoScaleCur) * Math.min(1, dt * 4);
+  if (Math.abs(pianoScaleTarget - pianoScaleCur) < 0.0005) pianoScaleCur = pianoScaleTarget;
+  piano.scale.setScalar(pianoScaleCur);
+  controls.minDistance = 2 * pianoScaleCur;
+  controls.maxDistance = 60 * pianoScaleCur;
+  controls.target.set(0, 0.72 * pianoScaleCur, 0.35 * pianoScaleCur);
+  sparkPoints.material.size = 0.02 * pianoScaleCur;
+}
+
+composer.setPixelRatio(MAX_PR);
+renderer.setAnimationLoop(() => {
+  const dt = Math.min(clock.getDelta(), 0.05);
+  elapsed += dt;
+
+  updateScale(dt);
+
+  // camera
+  if (flying) {
+    flying.t += dt;
+    const k = Math.min(1, flying.t / flying.dur);
+    const e = k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
+    camera.position.lerpVectors(flying.fromP, flying.toP, e);
+    camera.quaternion.slerpQuaternions(flying.fromQ, flying.toQ, e);
+    if (k >= 1) { const cb = flying.onDone; flying = null; if (cb) cb(); }
+  } else if (mode === 'orbit') {
+    controls.update();
+  } else {
+    // seated: keep the eye at the (scaled) playing position, add head-follow
+    camera.position.copy(SEAT_POS).multiplyScalar(pianoScaleCur);
+    headFollow(dt);
+  }
+
+  updateKeys(dt);
+  updateStrings();
+  updateSparks(dt);
+  updateDust(dt);
+
+  // sky life: slow rotation + twinkle
+  farStars.rotation.y += dt * 0.004;
+  farStars2.rotation.y += dt * 0.0028;
+  farStars.material.opacity = 0.75 + Math.sin(elapsed * 0.7) * 0.15;
+  farStars2.material.opacity = 0.55 + Math.sin(elapsed * 0.5 + 2) * 0.15;
+  milkyWay.rotation.y += dt * 0.0015;
+  for (const nb of nebulae) nb.material.rotation += nb.userData.rotSpeed * dt;
+  updateMeteors(dt, elapsed);
+
+  // breathing star highlights
+  for (const sp of breathStars) {
+    const u = sp.userData;
+    sp.scale.setScalar(u.base * (0.8 + 0.3 * Math.sin(elapsed * u.speed + u.phase)));
+    sp.material.opacity = 0.32 + 0.28 * Math.sin(elapsed * u.speed * 1.3 + u.phase);
+  }
+
+  updateHands(elapsed);
+
+  // adaptive resolution
+  emaDt = emaDt * 0.95 + dt * 0.05;
+  perfTimer += dt;
+  if (perfTimer > 2.5) {
+    perfTimer = 0;
+    const fps = 1 / emaDt;
+    if (fps < 45 && prIndex < prLevels.length - 1) { prIndex++; applyPR(); }
+    else if (fps > 57 && prIndex > 0) { prIndex--; applyPR(); }
+  }
+
+  composer.render();
+});
+
+function onResize() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  composer.setSize(window.innerWidth, window.innerHeight);
+}
+window.addEventListener('resize', onResize);
+
+// debug handle (harmless): lets automated tests inspect the scene graph
+window.__scene = scene;
+</script>
+</body>
+</html>
