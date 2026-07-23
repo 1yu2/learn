@@ -1,442 +1,909 @@
-# Agno 学习计划
+# Rust 学习文档
 
-这个仓库用于按阶段学习 [Agno](https://docs.agno.com/introduction.md)。Agno 是一个用于构建、运行和管理 Agent 平台的 SDK 与运行时：先用 SDK 构建 Agents、Teams、Workflows，再用 AgentOS 把它们作为服务运行，并获得会话、记忆、知识库、追踪、权限和审计等生产能力。
+> 基于 Rust 官方文档 (The Rust Programming Language) 整理的学习指南。
+> 参考版本: Rust 1.90.0, Edition 2024
+> 官方文档: https://doc.rust-lang.org/book/
 
-资料以 Agno 官方文档为主，建议边读边在仓库里沉淀可运行示例。每个阶段都要留下代码、运行记录和复盘笔记。
+---
 
-## 学习目标
+## 目录
 
-- 理解 Agno 的核心抽象：Agent、Tool、Model、Memory、Knowledge、Team、Workflow、AgentOS。
-- 从单个脚本开始，逐步演进到可服务化、可追踪、可持久化的 Agent 应用。
-- 建立自己的示例库：每个主题至少有一个可运行 Python 文件。
-- 学会判断何时用单 Agent、何时拆成 Team，何时用 Workflow 固化流程。
-- 最后完成一个小型综合项目，例如“文档问答 + 工具调用 + 记忆 + AgentOS 服务”。
+- [第一章: 快速入门](#第一章-快速入门)
+- [第二章: 猜数字游戏](#第二章-猜数字游戏)
+- [第三章: 通用编程概念](#第三章-通用编程概念)
+- [第四章: 理解所有权](#第四章-理解所有权)
+- [第五章: 结构体](#第五章-结构体)
+- [第六章: 枚举与模式匹配](#第六章-枚举与模式匹配)
+- [第七章: 包、Crate 与模块](#第七章-包crate-与模块)
+- [第八章: 常见集合](#第八章-常见集合)
+- [第九章: 错误处理](#第九章-错误处理)
+- [第十章: 泛型、Trait 与生命周期](#第十章-泛型trait-与生命周期)
+- [附录: 学习资源](#附录-学习资源)
 
-## 环境准备
+---
 
-建议使用 Python 3.12 和 `uv`。
+## 第一章 快速入门
 
-```bash
-uv venv --python 3.12
-source .venv/bin/activate
-uv pip install -U agno openai
-```
+### 安装 Rust
 
-如果使用 OpenAI 模型：
-
-```bash
-export OPENAI_API_KEY=sk-***
-```
-
-官方入门示例还会用到 AgentOS：
+通过 `rustup` 安装 Rust 工具链:
 
 ```bash
-uv pip install -U "agno[os]"
+# macOS / Linux
+curl --proto '=https' --tlsv1.2 https://sh.rustup.rs -sSf | sh
+
+# 验证安装
+rustc --version
 ```
 
-参考：
+macOS 还需要安装 C 编译器:
 
-- [Build Your First Agent](https://docs.agno.com/first-agent.md)
-- [Welcome to Agno](https://docs.agno.com/introduction.md)
-- [Documentation Index](https://docs.agno.com/llms.txt)
-
-## 项目代码规划
-
-整体代码规划见 [docs/architecture.md](docs/architecture.md)，阶段交付计划见 [docs/milestones.md](docs/milestones.md)。
-
-仓库采用“阶段示例 + 共享包 + 最终服务化”的方式推进：
-
-- `examples/`：按学习阶段存放可独立运行的最小示例。
-- `src/agno_learn/`：沉淀跨阶段复用的配置、路径、工具、知识库、Agent 和 Workflow 代码。
-- `docs/`：记录架构边界、阶段计划和后续实施顺序。
-- `notes/`：记录概念理解、错误排查和复盘。
-- `tmp/`：本地数据库、向量库、缓存和运行产物，不提交到 Git。
-
-## 仓库结构
-
-```text
-.
-├── README.md
-├── pyproject.toml
-├── .env.example
-├── docs/
-│   ├── architecture.md
-│   └── milestones.md
-├── examples/
-│   ├── README.md
-│   ├── 01_first_agent/
-│   ├── 02_tools/
-│   ├── 03_storage_memory/
-│   ├── 04_knowledge/
-│   ├── 05_teams/
-│   ├── 06_workflows/
-│   ├── 07_agentos/
-│   └── 08_evals_observability/
-├── notes/
-│   ├── concepts.md
-│   └── troubleshooting.md
-├── src/
-│   └── agno_learn/
-│       ├── config.py
-│       ├── paths.py
-│       ├── agents/
-│       ├── tools/
-│       ├── knowledge/
-│       └── workflows/
-├── tests/
-│   └── README.md
-└── tmp/
+```bash
+xcode-select --install
 ```
 
-当前先提交规划和目录骨架，后续每个阶段再补 `main.py`、运行说明、测试和复盘。
-
-## 阶段 0：理解 Agno 全貌
-
-目标：先建立地图，不急着写复杂代码。
-
-阅读：
-
-- [Welcome to Agno](https://docs.agno.com/introduction.md)
-- [SDK Introduction](https://docs.agno.com/sdk/introduction.md)
-- [What is AgentOS?](https://docs.agno.com/agent-os/introduction.md)
-
-重点理解：
-
-- Agno SDK 负责构建 Agents、Teams、Workflows。
-- AgentOS 是 FastAPI 运行时，用来把 Agent 系统变成服务。
-- AgentOS 可以管理 API、会话、数据库、记忆、知识、追踪、权限和人工审批。
-- 数据默认运行在自己的基础设施和数据库里。
-
-产出：
-
-- 在 `notes/concepts.md` 记录核心概念。
-- 画出一张简单关系图：Model -> Agent -> Tool/Memory/Knowledge -> Team/Workflow -> AgentOS。
-
-## 阶段 1：第一个 Agent
-
-目标：跑通最小 Agent，理解模型、指令、响应流。
-
-阅读：
-
-- [Build Your First Agent](https://docs.agno.com/first-agent.md)
-- [What are Agents?](https://docs.agno.com/agents/overview.md)
-- [Building Agents](https://docs.agno.com/agents/building-agents.md)
-- [Running Agents](https://docs.agno.com/agents/running-agents.md)
-- [Debugging Agents](https://docs.agno.com/agents/debugging-agents.md)
-
-练习：
-
-- 在 `examples/01_first_agent/` 创建一个最小 Agent。
-- 尝试不同 `instructions`，观察输出变化。
-- 使用 `stream=True` 打印流式响应。
-- 记录一次失败或不稳定输出，并写下如何调试。
-
-检查点：
-
-- 能解释 Agent 是“围绕无状态模型的有状态控制循环”。
-- 能说清楚 `instructions`、`model`、`markdown`、`print_response` 的作用。
-
-## 阶段 2：工具调用 Tools
-
-目标：让 Agent 从“会回答”变成“会行动”。
-
-阅读：
-
-- [What are Tools?](https://docs.agno.com/tools/overview.md)
-- [Agent Tools](https://docs.agno.com/tools/agent.md)
-- [Creating Tools](https://docs.agno.com/tools/creating-tools/overview.md)
-- [Toolkits](https://docs.agno.com/tools/toolkits/overview.md)
-- [MCP Tools](https://docs.agno.com/tools/mcp/overview.md)
-
-重点理解：
-
-- Tool 本质上是 Agent 可调用的 Python 函数或 Toolkit。
-- Agno 会根据函数签名和 docstring 生成模型可理解的工具定义。
-- 工具可以访问运行上下文、会话状态、媒体文件，也可以返回结构化结果。
-- 异步运行时，多个工具调用可以并发执行，前提是模型支持并行 function calling。
-
-练习：
-
-- 在 `examples/02_tools/` 写一个自定义工具，例如天气、计算器、文件摘要或网页搜索模拟工具。
-- 给工具补完整 docstring，观察工具描述如何影响调用。
-- 尝试一个官方 Toolkit，例如 HackerNews、Workspace 或 Web Search 相关工具。
-- 做一个“必须调用工具才能回答”的问题集。
-
-检查点：
-
-- 能解释工具 schema 是怎么从 Python 函数生成的。
-- 能判断什么时候该写自定义工具，什么时候使用 Toolkit。
-
-## 阶段 3：模型、输入输出与结构化结果
-
-目标：掌握模型选择、响应格式和结构化输出。
-
-阅读：
-
-- [Models](https://docs.agno.com/models/overview.md)
-- [Input and Output](https://docs.agno.com/input-output/overview.md)
-- [Agent with Structured Output](https://docs.agno.com/agents/usage/agent-with-structured-output.md)
-- [Multimodal](https://docs.agno.com/multimodal/overview.md)
-
-练习：
-
-- 在 `examples/01_first_agent/` 中切换至少两种模型配置。
-- 用 Pydantic 定义结构化输出，例如 `TaskPlan`、`ResearchSummary` 或 `BugReport`。
-- 对同一个输入比较普通文本输出和结构化输出。
-
-检查点：
-
-- 能说明什么时候需要结构化输出。
-- 能将 Agent 输出稳定地交给下一段 Python 逻辑处理。
-
-## 阶段 4：数据库、历史与 Memory
-
-目标：让 Agent 有会话历史和跨会话记忆。
-
-阅读：
-
-- [Database](https://docs.agno.com/database/overview.md)
-- [What is Memory?](https://docs.agno.com/memory/overview.md)
-- [Agent Memory](https://docs.agno.com/memory/agent/overview.md)
-- [Working with Memories](https://docs.agno.com/memory/working-with-memories/overview.md)
-- [History](https://docs.agno.com/history/overview.md)
-
-重点理解：
-
-- Session history 保存对话消息，用于连续上下文。
-- Memory 保存用户事实和偏好，例如名字、习惯、长期偏好。
-- `update_memory_on_run=True` 是自动记忆，适合多数场景。
-- `enable_agentic_memory=True` 让 Agent 自己决定何时创建、更新、删除记忆。
-- 两种记忆模式不要同时启用，Agentic Memory 会优先生效。
-
-练习：
-
-- 在 `examples/03_storage_memory/` 用 SQLite 保存会话。
-- 让 Agent 记住一个用户偏好，然后在下一轮对话中调用出来。
-- 手动读取某个 `user_id` 的 memories，写到学习笔记里。
-
-检查点：
-
-- 能区分 history、session state、memory。
-- 能说明生产环境中为什么必须关注用户隔离和数据清理。
-
-## 阶段 5：Knowledge 与 RAG
-
-目标：让 Agent 基于自己的资料回答问题，而不是只依赖模型参数知识。
-
-阅读：
-
-- [Knowledge Overview](https://docs.agno.com/knowledge/overview.md)
-- [Knowledge Quickstart](https://docs.agno.com/knowledge/quickstart.md)
-- [Knowledge for Agents](https://docs.agno.com/knowledge/agents/overview.md)
-- [Search and Retrieval](https://docs.agno.com/knowledge/concepts/search-and-retrieval/overview.md)
-- [Readers](https://docs.agno.com/knowledge/concepts/readers/overview.md)
-- [Chunking](https://docs.agno.com/knowledge/concepts/chunking/overview.md)
-- [Embedders](https://docs.agno.com/knowledge/concepts/embedder/overview.md)
-- [Vector Stores](https://docs.agno.com/knowledge/vector-stores/pgvector/overview.md)
-
-重点理解：
-
-- Knowledge 包含内容读取、分块、embedding、向量库检索和上下文注入。
-- Agentic RAG 是默认思路：Agent 判断何时搜索知识库。
-- Traditional RAG 更适合必须始终带上下文的流程。
-- 过滤、重排、混合搜索会直接影响回答质量。
-
-练习：
-
-- 在 `examples/04_knowledge/` 用本地 Markdown 或 URL 构建一个小知识库。
-- 使用 ChromaDB 或其他本地向量库做第一版。
-- 准备 5 个问题，比较有无 knowledge 时的回答差异。
-- 记录一次错误引用或答非所问，尝试通过 chunking 或过滤改善。
-
-检查点：
-
-- 能解释 reader、chunker、embedder、vector db 各自负责什么。
-- 能说明 Agentic RAG 与 Traditional RAG 的差别。
-
-## 阶段 6：Teams 多 Agent 协作
-
-目标：用多个专长 Agent 分工解决复杂任务。
-
-阅读：
-
-- [What are Teams?](https://docs.agno.com/teams/overview.md)
-- [Building Teams](https://docs.agno.com/teams/building-teams.md)
-- [Running Teams](https://docs.agno.com/teams/running-teams.md)
-- [Debugging Teams](https://docs.agno.com/teams/debugging-teams.md)
-- [Delegation](https://docs.agno.com/teams/delegation.md)
-
-重点理解：
-
-- Team 是一组 Agents 或子 Teams，由 leader 根据角色进行协调。
-- Team 适合多领域、多工具、多上下文的任务。
-- 单 Agent 更便宜、更简单；不确定时先从单 Agent 开始。
-- Team 模式包括 coordinate、route、broadcast 等协作方式。
-
-练习：
-
-- 在 `examples/05_teams/` 创建一个研究团队：Researcher、Writer、Reviewer。
-- 给不同成员配置不同工具和角色。
-- 比较单 Agent 与 Team 在同一任务上的效果、成本和可调试性。
-
-检查点：
-
-- 能判断“这个任务是否真的需要 Team”。
-- 能定位某个成员输出质量差时该改 role、instructions 还是工具。
-
-## 阶段 7：Workflows 固化流程
-
-目标：把重复任务变成可预测、可审计的步骤流水线。
-
-阅读：
-
-- [What are Workflows?](https://docs.agno.com/workflows/overview.md)
-- [Building Workflows](https://docs.agno.com/workflows/building-workflows.md)
-- [Running Workflows](https://docs.agno.com/workflows/running-workflows.md)
-- [Conversational Workflows](https://docs.agno.com/workflows/conversational-workflows.md)
-
-重点理解：
-
-- Workflow 由 Steps 组成，Step 可以是 Agent、Team、Function 或嵌套 Workflow。
-- 步骤可以顺序、并行、循环或按条件执行。
-- 需要可重复、可审计、输入输出明确的任务时，优先考虑 Workflow。
-- 需要开放式协作和动态分工时，优先考虑 Team。
-
-练习：
-
-- 在 `examples/06_workflows/` 写一个“资料收集 -> 摘要 -> 审稿 -> 输出”的 Workflow。
-- 加一个普通 Python function 作为中间步骤，例如清洗输入或保存结果。
-- 记录每一步的输入输出。
-
-检查点：
-
-- 能解释 Team 和 Workflow 的边界。
-- 能把一个自由对话任务改造成可重复流程。
-
-## 阶段 8：AgentOS 服务化
-
-目标：把本地 Agent 系统变成可运行的 API 服务。
-
-阅读：
-
-- [What is AgentOS?](https://docs.agno.com/agent-os/introduction.md)
-- [Run Your AgentOS](https://docs.agno.com/agent-os/run-your-os.md)
-- [Connect Your AgentOS](https://docs.agno.com/agent-os/connect-your-os.md)
-- [Using the API](https://docs.agno.com/agent-os/using-the-api.md)
-- [AgentOS Configuration](https://docs.agno.com/agent-os/config.md)
-- [AgentOS Security](https://docs.agno.com/agent-os/security/overview.md)
-- [Tracing](https://docs.agno.com/agent-os/tracing/overview.md)
-
-重点理解：
-
-- AgentOS 是 FastAPI app，用于运行 agents、teams、workflows。
-- 它提供流式 API、会话隔离、持久化、追踪、调度、RBAC、审计和审批。
-- Control Plane 是管理和调试 UI，运行时和数据仍在自己的基础设施里。
-
-练习：
-
-- 在 `examples/07_agentos/` 把前面做过的 Agent 包装成 AgentOS。
-- 启动本地服务并打开 `/docs`。
-- 连接 [os.agno.com](https://os.agno.com)，查看 sessions 和 traces。
-- 给服务添加 SQLite 数据库，确认重启后会话仍可查询。
-
-检查点：
-
-- 能说明 SDK 和 AgentOS 的职责差异。
-- 能解释为什么服务化后必须考虑 auth、隔离、日志和审计。
-
-## 阶段 9：评测、观测与生产化
-
-目标：从“能跑”推进到“能评估、能调试、能上线”。
-
-阅读：
-
-- [Evals](https://docs.agno.com/evals/overview.md)
-- [Examples: Evals](https://docs.agno.com/examples/evals/overview.md)
-- [AgentOS Tracing](https://docs.agno.com/agent-os/tracing/overview.md)
-- [Deploy AgentOS](https://docs.agno.com/deploy/introduction.md)
-- [Human-in-the-Loop](https://docs.agno.com/agent-os/usage/hitl.md)
-- [Approvals](https://docs.agno.com/agent-os/approvals/overview.md)
-
-练习：
-
-- 在 `examples/08_evals_observability/` 建一个小评测集。
-- 对同一个 Agent 的不同 instructions 版本做对比。
-- 记录 token、延迟、失败样例、工具调用次数。
-- 尝试一个需要人工审批的工具调用流程。
-
-检查点：
-
-- 能定义一个 Agent 的成功标准。
-- 能用 traces 定位回答错误、工具失败或上下文污染。
-
-## 综合项目建议
-
-选择一个足够小但覆盖核心能力的项目：
-
-1. 文档问答助手：读取本仓库笔记，回答 Agno 学习问题。
-2. 研究写作流水线：搜索资料、生成摘要、写文章、审稿。
-3. 个人助理：记住用户偏好，调用工具整理日程或任务。
-4. 本地文件整理 Agent：参考官方 Sorting Hat 示例分析并整理目录。
-
-最低验收标准：
-
-- 有一个 Agent 使用至少一个自定义工具。
-- 有持久化数据库，能保存 session 或 memory。
-- 有 Knowledge 或 Team/Workflow 中的任意一个进阶能力。
-- 能通过 AgentOS 作为服务运行。
-- README 或 `notes/` 中有运行方式、失败记录和复盘。
-
-## 学习节奏
-
-建议每个阶段都按这个循环推进：
-
-1. 阅读对应官方文档。
-2. 写一个最小可运行示例。
-3. 记录运行命令、输出截图或关键日志。
-4. 写下一个失败案例和修正方式。
-5. 提交一次 Git commit。
-
-推荐 commit 粒度：
-
-```text
-docs: add agno concept notes
-feat: add first agno agent example
-feat: add custom tool example
-feat: add sqlite memory example
-feat: add knowledge rag example
-feat: add research team example
-feat: add content workflow example
-feat: serve agent with agentos
-docs: summarize eval findings
+### Hello, World!
+
+```rust
+fn main() {
+    println!("Hello, world!");
+}
 ```
 
-## 官方文档入口
+编译运行:
 
-- [Agno Introduction](https://docs.agno.com/introduction.md)
-- [First Agent](https://docs.agno.com/first-agent.md)
-- [Agents](https://docs.agno.com/agents/overview.md)
-- [Tools](https://docs.agno.com/tools/overview.md)
-- [Models](https://docs.agno.com/models/overview.md)
-- [Database](https://docs.agno.com/database/overview.md)
-- [Memory](https://docs.agno.com/memory/overview.md)
-- [Knowledge](https://docs.agno.com/knowledge/overview.md)
-- [Teams](https://docs.agno.com/teams/overview.md)
-- [Workflows](https://docs.agno.com/workflows/overview.md)
-- [AgentOS](https://docs.agno.com/agent-os/introduction.md)
-- [Examples](https://docs.agno.com/examples/introduction.md)
-- [API Reference](https://docs.agno.com/api-reference/home/api-information.md)
-- [Full Documentation Index](https://docs.agno.com/llms.txt)
+```bash
+rustc main.rs
+./main
+```
 
-## 当前进度
+### Cargo — Rust 的构建系统与包管理器
 
-- [ ] 阶段 0：理解 Agno 全貌
-- [ ] 阶段 1：第一个 Agent
-- [ ] 阶段 2：工具调用 Tools
-- [ ] 阶段 3：模型、输入输出与结构化结果
-- [ ] 阶段 4：数据库、历史与 Memory
-- [ ] 阶段 5：Knowledge 与 RAG
-- [ ] 阶段 6：Teams 多 Agent 协作
-- [ ] 阶段 7：Workflows 固化流程
-- [ ] 阶段 8：AgentOS 服务化
-- [ ] 阶段 9：评测、观测与生产化
+```bash
+# 创建新项目
+cargo new hello_cargo
+cd hello_cargo
+
+# 构建项目
+cargo build
+
+# 构建并运行
+cargo run
+
+# 快速检查代码是否能编译 (不生成可执行文件)
+cargo check
+
+# 发布构建 (优化)
+cargo build --release
+```
+
+Cargo.toml 示例:
+
+```toml
+[package]
+name = "hello_cargo"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+rand = "0.8.5"
+```
+
+### 更新 Rust
+
+```bash
+rustup update          # 更新 Rust
+rustup self uninstall  # 卸载 Rust
+rustup doc             # 打开本地文档
+```
+
+---
+
+## 第二章 猜数字游戏
+
+一个综合练习项目，涵盖 `let`、`match`、方法、关联函数、外部 crate 等核心概念。
+
+```rust
+use rand::Rng;
+use std::cmp::Ordering;
+use std::io;
+
+fn main() {
+    println!("猜数字游戏!");
+
+    let secret_number = rand::thread_rng().gen_range(1..=100);
+
+    loop {
+        println!("请输入你的猜测:");
+
+        let mut guess = String::new();
+
+        io::stdin()
+            .read_line(&mut guess)
+            .expect("读取输入失败");
+
+        let guess: u32 = match guess.trim().parse() {
+            Ok(num) => num,
+            Err(_) => continue,
+        };
+
+        println!("你猜的数字是: {guess}");
+
+        match guess.cmp(&secret_number) {
+            Ordering::Less => println!("太小了!"),
+            Ordering::Greater => println!("太大了!"),
+            Ordering::Equal => {
+                println!("你赢了!");
+                break;
+            }
+        }
+    }
+}
+```
+
+---
+
+## 第三章 通用编程概念
+
+### 变量与可变性
+
+```rust
+// 默认不可变
+let x = 5;
+// x = 6; // 编译错误!
+
+// 可变变量
+let mut y = 5;
+y = 6; // 正确
+
+// 常量
+const THREE_HOURS_IN_SECONDS: u32 = 60 * 60 * 3;
+
+// 遮蔽 (Shadowing)
+let z = 5;
+let z = z + 1; // z = 6，新的变量，可以改变类型
+```
+
+### 数据类型
+
+#### 标量类型
+
+| 类型 | 描述 |
+|------|------|
+| `i8`, `i16`, `i32`, `i64`, `i128`, `isize` | 有符号整数 |
+| `u8`, `u16`, `u32`, `u64`, `u128`, `usize` | 无符号整数 |
+| `f32`, `f64` | 浮点数 (默认 `f64`) |
+| `bool` | 布尔值 `true` / `false` |
+| `char` | Unicode 字符 (4 字节) |
+
+```rust
+let a: u32 = 42;
+let b = 3.14;        // f64
+let c: bool = true;
+let d = '🦀';        // char, 单引号
+```
+
+#### 复合类型
+
+```rust
+// 元组 (Tuple)
+let tup: (i32, f64, u8) = (500, 6.4, 1);
+let (x, y, z) = tup;
+let five_hundred = tup.0;
+
+// 数组 (Array) — 固定长度，栈上分配
+let arr: [i32; 5] = [1, 2, 3, 4, 5];
+let zeros = [0; 5];  // [0, 0, 0, 0, 0]
+let first = arr[0];
+```
+
+### 函数
+
+```rust
+fn main() {
+    let result = add(5, 3);
+    println!("结果: {result}");
+}
+
+fn add(x: i32, y: i32) -> i32 {
+    x + y // 表达式，不加分号表示返回值
+}
+```
+
+- **语句**: 执行操作但不返回值 (以分号结尾)
+- **表达式**: 计算并返回值 (不以分号结尾)
+
+### 控制流
+
+```rust
+// if 表达式
+let number = 6;
+if number % 4 == 0 {
+    println!("number 能被 4 整除");
+} else if number % 3 == 0 {
+    println!("number 能被 3 整除");
+} else {
+    println!("number 不能被 4 或 3 整除");
+}
+
+// if 是表达式，可用于赋值
+let condition = true;
+let number = if condition { 5 } else { 6 };
+
+// 循环
+loop {
+    // 无限循环
+    break;
+}
+
+let mut counter = 0;
+let result = loop {
+    counter += 1;
+    if counter == 10 {
+        break counter * 2; // 从 loop 返回值
+    }
+};
+
+// while 循环
+let mut number = 3;
+while number != 0 {
+    println!("{number}!");
+    number -= 1;
+}
+
+// for 循环
+let arr = [10, 20, 30, 40, 50];
+for element in arr {
+    println!("值: {element}");
+}
+
+// Range
+for number in (1..4).rev() {
+    println!("{number}!");
+}
+```
+
+---
+
+## 第四章 理解所有权
+
+**所有权是 Rust 最独特的特性**，它使 Rust 无需垃圾回收器即可保证内存安全。
+
+### 所有权规则
+
+1. Rust 中的每个值都有一个 **所有者** (owner)
+2. 同一时间只能有 **一个所有者**
+3. 当所有者离开作用域，值将被 **丢弃** (drop)
+
+### 栈与堆
+
+- **栈**: LIFO，存储已知固定大小的数据，访问快
+- **堆**: 动态分配，通过指针访问，访问相对慢
+- 所有权主要管理堆上的数据
+
+### Move 语义
+
+```rust
+let s1 = String::from("hello");
+let s2 = s1;          // s1 被移动到 s2，s1 不再有效
+// println!("{s1}");  // 编译错误! s1 已失效
+println!("{s2}");     // 正确
+```
+
+### Clone (深拷贝)
+
+```rust
+let s1 = String::from("hello");
+let s2 = s1.clone();  // 深拷贝堆数据
+println!("s1 = {s1}, s2 = {s2}"); // 两者都有效
+```
+
+### Copy 类型
+
+实现了 `Copy` trait 的类型，赋值时自动拷贝而非移动:
+
+```rust
+let x = 5;
+let y = x;
+println!("x = {x}, y = {y}"); // 两者都有效
+```
+
+`Copy` 类型: 所有整数、`bool`、`f32`/`f64`、`char`、由 `Copy` 类型组成的元组。
+
+### 所有权与函数
+
+```rust
+fn main() {
+    let s = String::from("hello");
+    takes_ownership(s);  // s 移动到函数内
+    // println!("{s}");  // 错误!
+
+    let x = 5;
+    makes_copy(x);       // i32 是 Copy 类型，x 仍然可用
+    println!("{x}");     // 正确
+}
+
+fn takes_ownership(some_string: String) {
+    println!("{some_string}");
+} // some_string 离开作用域，drop 释放内存
+
+fn makes_copy(some_integer: i32) {
+    println!("{some_integer}");
+}
+```
+
+### 引用与借用
+
+```rust
+fn main() {
+    let s1 = String::from("hello");
+    let len = calculate_length(&s1); // 引用传递，不转移所有权
+    println!("'{s1}' 的长度是 {len}.");
+}
+
+fn calculate_length(s: &String) -> usize {
+    s.len()
+} // s 是引用，离开作用域不释放内存
+```
+
+#### 引用的规则
+
+1. 在任意给定时间，只能拥有以下之一:
+   - **一个可变引用** (`&mut T`)
+   - **任意数量的不可变引用** (`&T`)
+2. 引用必须始终有效 (不允许悬垂引用)
+
+```rust
+let mut s = String::from("hello");
+
+let r1 = &s;     // 不可变引用
+let r2 = &s;     // 不可变引用，OK
+// let r3 = &mut s; // 错误! 不能同时有可变和不可变引用
+println!("{r1} {r2}");
+
+let r3 = &mut s;  // r1, r2 不再使用，可以创建可变引用
+r3.push_str(" world");
+```
+
+### 切片
+
+```rust
+let s = String::from("hello world");
+
+let hello = &s[0..5];   // "hello"
+let world = &s[6..11];  // "world"
+let all = &s[..];       // "hello world"
+
+// 字符串字面量就是切片
+let literal: &str = "hello"; // &str 是不可变引用
+
+// 更好的函数签名
+fn first_word(s: &str) -> &str {
+    let bytes = s.as_bytes();
+    for (i, &item) in bytes.iter().enumerate() {
+        if item == b' ' {
+            return &s[0..i];
+        }
+    }
+    &s[..]
+}
+```
+
+---
+
+## 第五章 结构体
+
+### 定义与实例化
+
+```rust
+struct User {
+    active: bool,
+    username: String,
+    email: String,
+    sign_in_count: u64,
+}
+
+let user1 = User {
+    active: true,
+    username: String::from("alice"),
+    email: String::from("alice@example.com"),
+    sign_in_count: 1,
+};
+
+// 使用 .. 语法从其他实例创建
+let user2 = User {
+    email: String::from("bob@example.com"),
+    ..user1 // user1.username 被移动到 user2，user1 不再可用
+};
+```
+
+### 元组结构体
+
+```rust
+struct Color(i32, i32, i32);
+struct Point(i32, i32, i32);
+
+let black = Color(0, 0, 0);
+let origin = Point(0, 0, 0);
+```
+
+### 类单元结构体
+
+```rust
+struct AlwaysEqual;
+let subject = AlwaysEqual;
+```
+
+### 方法
+
+```rust
+#[derive(Debug)]
+struct Rectangle {
+    width: u32,
+    height: u32,
+}
+
+impl Rectangle {
+    // 关联函数 (构造函数)
+    fn square(size: u32) -> Self {
+        Self {
+            width: size,
+            height: size,
+        }
+    }
+
+    // 方法 (第一个参数是 &self)
+    fn area(&self) -> u32 {
+        self.width * self.height
+    }
+
+    fn can_hold(&self, other: &Rectangle) -> bool {
+        self.width > other.width && self.height > other.height
+    }
+}
+
+let rect = Rectangle { width: 30, height: 50 };
+println!("面积: {}", rect.area());
+
+let sq = Rectangle::square(10);
+```
+
+---
+
+## 第六章 枚举与模式匹配
+
+### 定义枚举
+
+```rust
+enum IpAddrKind {
+    V4,
+    V6,
+}
+
+enum IpAddr {
+    V4(u8, u8, u8, u8),
+    V6(String),
+}
+
+let home = IpAddr::V4(127, 0, 0, 1);
+let loopback = IpAddr::V6(String::from("::1"));
+```
+
+### Option<T> — 替代 null
+
+```rust
+enum Option<T> {
+    None,
+    Some(T),
+}
+
+let some_number = Some(5);
+let some_char = Some('e');
+let absent_number: Option<i32> = None;
+```
+
+### match 控制流
+
+```rust
+enum Coin {
+    Penny,
+    Nickel,
+    Dime,
+    Quarter,
+}
+
+fn value_in_cents(coin: Coin) -> u8 {
+    match coin {
+        Coin::Penny => 1,
+        Coin::Nickel => 5,
+        Coin::Dime => 10,
+        Coin::Quarter => 25,
+    }
+}
+
+// 处理 Option<T>
+fn plus_one(x: Option<i32>) -> Option<i32> {
+    match x {
+        None => None,
+        Some(i) => Some(i + 1),
+    }
+}
+
+// 通配模式
+let dice_roll = 9;
+match dice_roll {
+    3 => add_hat(),
+    7 => remove_hat(),
+    other => move_player(other), // 绑定值
+    // _ => reroll(),            // 不绑定值
+    // _ => (),                   // 什么都不做
+}
+```
+
+### if let 简洁控制流
+
+```rust
+let config_max = Some(3u8);
+if let Some(max) = config_max {
+    println!("最大值为 {max}");
+}
+// 等价于 match config_max { Some(max) => ..., _ => () }
+```
+
+---
+
+## 第七章 包、Crate 与模块
+
+### 模块系统
+
+```rust
+mod front_of_house {
+    pub mod hosting {
+        pub fn add_to_waitlist() {}
+        fn seat_at_table() {}
+    }
+
+    mod serving {
+        fn take_order() {}
+        fn serve_order() {}
+        fn take_payment() {}
+    }
+}
+
+// 使用路径
+pub fn eat_at_restaurant() {
+    // 绝对路径
+    crate::front_of_house::hosting::add_to_waitlist();
+
+    // 相对路径
+    front_of_house::hosting::add_to_waitlist();
+}
+```
+
+### use 关键字
+
+```rust
+use crate::front_of_house::hosting;
+// use std::collections::HashMap;
+// use std::io::{self, Write};
+// use std::collections::*; // glob
+
+pub fn eat_at_restaurant() {
+    hosting::add_to_waitlist();
+}
+```
+
+---
+
+## 第八章 常见集合
+
+### Vector
+
+```rust
+let mut v: Vec<i32> = Vec::new();
+v.push(5);
+v.push(6);
+
+let v2 = vec![1, 2, 3];
+
+// 访问元素
+let third: &i32 = &v2[2];
+let third: Option<&i32> = v2.get(2);
+
+// 遍历
+for i in &v2 {
+    println!("{i}");
+}
+
+for i in &mut v {
+    *i += 50; // 解引用
+}
+```
+
+### 字符串
+
+```rust
+let mut s = String::new();
+let s1 = "initial contents".to_string();
+let s2 = String::from("hello");
+
+s.push_str("bar");
+s.push('!');
+
+let s3 = s1 + &s2; // s1 被移动，不再可用
+
+let s4 = format!("{s2}-{s3}"); // 不获取所有权
+
+// 遍历字符
+for c in "Зд".chars() {
+    println!("{c}");
+}
+```
+
+### HashMap
+
+```rust
+use std::collections::HashMap;
+
+let mut scores = HashMap::new();
+scores.insert(String::from("Blue"), 10);
+scores.insert(String::from("Yellow"), 50);
+
+let team_name = String::from("Blue");
+let score = scores.get(&team_name).copied().unwrap_or(0);
+
+// 遍历
+for (key, value) in &scores {
+    println!("{key}: {value}");
+}
+
+// 只在键不存在时插入
+scores.entry(String::from("Blue")).or_insert(50);
+```
+
+---
+
+## 第九章 错误处理
+
+Rust 没有异常，将错误分为两类: **可恢复错误** 和 **不可恢复错误**。
+
+### panic! — 不可恢复错误
+
+```rust
+fn main() {
+    panic!("crash and burn");
+
+    let v = vec![1, 2, 3];
+    v[99]; // 索引越界也会 panic!
+}
+```
+
+设置 `RUST_BACKTRACE=1` 获取回溯信息。
+
+### Result<T, E> — 可恢复错误
+
+```rust
+enum Result<T, E> {
+    Ok(T),
+    Err(E),
+}
+```
+
+```rust
+use std::fs::File;
+use std::io::ErrorKind;
+
+fn main() {
+    let greeting_file_result = File::open("hello.txt");
+
+    let greeting_file = match greeting_file_result {
+        Ok(file) => file,
+        Err(error) => match error.kind() {
+            ErrorKind::NotFound => match File::create("hello.txt") {
+                Ok(fc) => fc,
+                Err(e) => panic!("创建文件失败: {e:?}"),
+            },
+            other_error => {
+                panic!("打开文件失败: {other_error:?}");
+            }
+        },
+    };
+}
+```
+
+### 快捷方式
+
+```rust
+// unwrap: 成功返回值，失败则 panic
+let f = File::open("hello.txt").unwrap();
+
+// expect: 类似 unwrap 但可以自定义 panic 信息
+let f = File::open("hello.txt").expect("无法打开 hello.txt");
+```
+
+### 传播错误
+
+```rust
+use std::fs::File;
+use std::io::{self, Read};
+
+fn read_username_from_file() -> Result<String, io::Error> {
+    let mut username_file = File::open("hello.txt")?;
+    let mut username = String::new();
+    username_file.read_to_string(&mut username)?;
+    Ok(username)
+}
+
+// 更简洁的写法
+fn read_username_from_file() -> Result<String, io::Error> {
+    let mut username = String::new();
+    File::open("hello.txt")?.read_to_string(&mut username)?;
+    Ok(username)
+}
+
+// 最简洁
+fn read_username_from_file() -> Result<String, io::Error> {
+    fs::read_to_string("hello.txt")
+}
+```
+
+**`?` 运算符** 相当于: 如果是 `Ok` 则返回内部值，如果是 `Err` 则提前返回错误。
+
+---
+
+## 第十章 泛型、Trait 与生命周期
+
+### 泛型
+
+```rust
+// 泛型函数
+fn largest<T: PartialOrd>(list: &[T]) -> &T {
+    let mut largest = &list[0];
+    for item in list {
+        if item > largest {
+            largest = item;
+        }
+    }
+    largest
+}
+
+// 泛型结构体
+struct Point<T> {
+    x: T,
+    y: T,
+}
+
+impl<T> Point<T> {
+    fn x(&self) -> &T {
+        &self.x
+    }
+}
+
+// 泛型枚举
+enum Option<T> { Some(T), None }
+enum Result<T, E> { Ok(T), Err(E) }
+```
+
+### Trait — 定义共享行为
+
+```rust
+pub trait Summary {
+    fn summarize(&self) -> String;
+
+    // 默认实现
+    fn summarize_author(&self) -> String {
+        String::from("(作者未知)")
+    }
+}
+
+pub struct NewsArticle {
+    pub headline: String,
+    pub author: String,
+}
+
+impl Summary for NewsArticle {
+    fn summarize(&self) -> String {
+        format!("{} - {}", self.headline, self.author)
+    }
+}
+
+// trait 作为参数
+pub fn notify(item: &impl Summary) {
+    println!("快讯! {}", item.summarize());
+}
+
+// trait bound 语法
+pub fn notify<T: Summary>(item: &T) {
+    println!("快讯! {}", item.summarize());
+}
+
+// 多个 trait bound
+pub fn notify(item: &(impl Summary + Display)) {}
+pub fn notify<T: Summary + Display>(item: &T) {}
+
+// where 从句
+fn some_function<T, U>(t: &T, u: &U) -> i32
+where
+    T: Display + Clone,
+    U: Clone + Debug,
+{}
+
+// 返回实现了 trait 的类型
+fn returns_summarizable() -> impl Summary {}
+```
+
+#### 常用派生 Trait
+
+```rust
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+struct MyStruct { /* ... */ }
+```
+
+### 生命周期
+
+生命周期确保引用始终有效。
+
+```rust
+// 生命周期标注语法
+&'a i32      // 带有显式生命周期的引用
+&'a mut i32  // 带有显式生命周期的可变引用
+
+// 函数中的生命周期
+fn longest<'a>(x: &'a str, y: &'a str) -> &'a str {
+    if x.len() > y.len() { x } else { y }
+}
+
+// 结构体中的生命周期
+struct Excerpt<'a> {
+    part: &'a str,
+}
+
+// 生命周期省略规则 (三条规则)
+// 1. 每个引用参数获得自己的生命周期
+// 2. 如果只有一个输入生命周期，则赋给所有输出生命周期
+// 3. 如果有 &self 或 &mut self，则其生命周期赋给所有输出生命周期
+```
+
+---
+
+## 附录: 学习资源
+
+### 官方资源
+
+| 资源 | 链接 | 说明 |
+|------|------|------|
+| The Rust Book | https://doc.rust-lang.org/book/ | Rust 圣经，入门必读 |
+| Rust by Example | https://doc.rust-lang.org/rust-by-example/ | 通过实例学习 Rust |
+| Rustlings | https://github.com/rust-lang/rustlings/ | 交互式命令行练习 |
+| 标准库文档 | https://doc.rust-lang.org/std/ | 标准库 API 参考 |
+| Cargo 手册 | https://doc.rust-lang.org/cargo/ | 包管理器文档 |
+| Rust Reference | https://doc.rust-lang.org/reference/ | 语言参考 |
+| Rustonomicon | https://doc.rust-lang.org/nomicon/ | Unsafe Rust 指南 |
+
+### 社区
+
+- 用户论坛: https://users.rust-lang.org
+- Discord: https://discord.gg/rust-lang
+- 中文社区: https://rustcc.cn
+
+### 其他推荐
+
+- 布朗大学互动版 Rust Book: https://rust-book.cs.brown.edu (带测验、可视化)
+- Rust design patterns: https://rust-unofficial.github.io/patterns/
+
+---
+
+## 关键概念速查
+
+| 概念 | 说明 |
+|------|------|
+| 所有权 (Ownership) | 每个值有唯一的所有者，离开作用域时释放 |
+| 借用 (Borrowing) | 通过引用临时使用值而不获取所有权 |
+| 生命周期 (Lifetime) | 编译器验证引用有效性 |
+| Move 语义 | 赋值/传参会转移所有权 (堆数据) |
+| Copy 语义 | 栈数据赋值时自动复制 |
+| Trait | 类似接口，定义共享行为 |
+| match | 穷尽模式匹配 |
+| Result / Option | 无 null/异常，显式处理 |
+| unsafe | 绕过部分安全检查 (谨慎使用) |
+| Cargo | 官方构建系统与包管理器 |
