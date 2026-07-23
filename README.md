@@ -1,397 +1,450 @@
-# Agno 学习计划
+# Go 学习计划
 
-这个仓库用于按阶段学习 [Agno](https://docs.agno.com/introduction.md)。Agno 是一个用于构建、运行和管理 Agent 平台的 SDK 与运行时：先用 SDK 构建 Agents、Teams、Workflows，再用 AgentOS 把它们作为服务运行，并获得会话、记忆、知识库、追踪、权限和审计等生产能力。
+本仓库用于按阶段系统学习 [Go](https://go.dev/) 编程语言。Go 是由 Google 开发的开源编程语言，以简洁、高效和强大的并发支持著称。
 
-资料以 Agno 官方文档为主，建议边读边在仓库里沉淀可运行示例。每个阶段都要留下代码、运行记录和复盘笔记。
+资料以 Go 官方文档为主，建议边读边在仓库里沉淀可运行示例。每个阶段都要留下代码、运行记录和复盘笔记。
 
 ## 学习目标
 
-- 理解 Agno 的核心抽象：Agent、Tool、Model、Memory、Knowledge、Team、Workflow、AgentOS。
-- 从单个脚本开始，逐步演进到可服务化、可追踪、可持久化的 Agent 应用。
-- 建立自己的示例库：每个主题至少有一个可运行 Python 文件。
-- 学会判断何时用单 Agent、何时拆成 Team，何时用 Workflow 固化流程。
-- 最后完成一个小型综合项目，例如“文档问答 + 工具调用 + 记忆 + AgentOS 服务”。
+- 掌握 Go 的基础语法、类型系统和控制流。
+- 理解 Go 的函数（Functions）、方法（Methods）和接口（Interfaces）。
+- 学会 Go 的包（Packages）和模块（Modules）管理。
+- 掌握 Go 的结构体（Structs）、嵌入（Embedding）和组合（Composition）。
+- 深入理解 Go 的并发模型：Goroutines、Channels、Mutex 和 Select。
+- 掌握 Go 的错误处理（Error Handling）和 Panic/Recover 机制。
+- 学会 Go 的测试（Testing）、基准测试（Benchmark）和模糊测试（Fuzzing）。
+- 能用 Go 构建 Web 服务（net/http、Gin）。
+- 能用 Go 操作数据库（database/sql）。
+- 能用 Go 构建命令行工具（CLI）。
+- 理解 Go 的工具链：go build、go test、go mod、go vet、pprof 等。
 
 ## 环境准备
 
-建议使用 Python 3.12 和 `uv`。
+建议安装最新版本的 Go：
+
+- [下载 Go](https://go.dev/dl/)
+- [安装指南](https://go.dev/doc/install)
+
+验证安装：
 
 ```bash
-uv venv --python 3.12
-source .venv/bin/activate
-uv pip install -U agno openai
+go version
 ```
-
-如果使用 OpenAI 模型：
-
-```bash
-export OPENAI_API_KEY=sk-***
-```
-
-官方入门示例还会用到 AgentOS：
-
-```bash
-uv pip install -U "agno[os]"
-```
-
-参考：
-
-- [Build Your First Agent](https://docs.agno.com/first-agent.md)
-- [Welcome to Agno](https://docs.agno.com/introduction.md)
-- [Documentation Index](https://docs.agno.com/llms.txt)
 
 ## 项目代码规划
 
-整体代码规划见 [docs/architecture.md](docs/architecture.md)，阶段交付计划见 [docs/milestones.md](docs/milestones.md)。
-
-仓库采用“阶段示例 + 共享包 + 最终服务化”的方式推进：
+仓库采用"阶段示例 + 共享模块 + 最终综合项目"的方式推进：
 
 - `examples/`：按学习阶段存放可独立运行的最小示例。
-- `src/agno_learn/`：沉淀跨阶段复用的配置、路径、工具、知识库、Agent 和 Workflow 代码。
-- `docs/`：记录架构边界、阶段计划和后续实施顺序。
 - `notes/`：记录概念理解、错误排查和复盘。
-- `tmp/`：本地数据库、向量库、缓存和运行产物，不提交到 Git。
+- `go.mod`：Go 模块定义文件。
+- `tmp/`：本地运行时产物，不提交到 Git。
 
 ## 仓库结构
 
 ```text
 .
 ├── README.md
-├── pyproject.toml
-├── .env.example
-├── docs/
-│   ├── architecture.md
-│   └── milestones.md
-├── examples/
-│   ├── README.md
-│   ├── 01_first_agent/
-│   ├── 02_tools/
-│   ├── 03_storage_memory/
-│   ├── 04_knowledge/
-│   ├── 05_teams/
-│   ├── 06_workflows/
-│   ├── 07_agentos/
-│   └── 08_evals_observability/
+├── go.mod
+├── .gitignore
 ├── notes/
-│   ├── concepts.md
-│   └── troubleshooting.md
-├── src/
-│   └── agno_learn/
-│       ├── config.py
-│       ├── paths.py
-│       ├── agents/
-│       ├── tools/
-│       ├── knowledge/
-│       └── workflows/
-├── tests/
-│   └── README.md
+│   └── concepts.md
+├── examples/
+│   ├── 01_basics/            # 基础语法：变量、类型、控制流
+│   ├── 02_functions/         # 函数与方法
+│   ├── 03_packages_modules/  # 包与模块管理
+│   ├── 04_structs_interfaces/# 结构体、嵌入与接口
+│   ├── 05_concurrency/       # 并发：Goroutine、Channel、Select
+│   ├── 06_error_handling/    # 错误处理与 Panic/Recover
+│   ├── 07_testing/           # 测试、基准测试与模糊测试
+│   ├── 08_web_service/       # Web 服务：net/http、Gin
+│   ├── 09_database/          # 数据库：database/sql
+│   └── 10_cli_app/           # CLI 应用
 └── tmp/
 ```
 
-当前先提交规划和目录骨架，后续每个阶段再补 `main.py`、运行说明、测试和复盘。
-
-## 阶段 0：理解 Agno 全貌
+## 阶段 0：理解 Go 全貌
 
 目标：先建立地图，不急着写复杂代码。
 
 阅读：
 
-- [Welcome to Agno](https://docs.agno.com/introduction.md)
-- [SDK Introduction](https://docs.agno.com/sdk/introduction.md)
-- [What is AgentOS?](https://docs.agno.com/agent-os/introduction.md)
+- [A Tour of Go](https://go.dev/tour/) — 交互式入门，分四部分
+- [Effective Go](https://go.dev/doc/effective_go) — 写出地道的 Go 代码
+- [How to Write Go Code](https://go.dev/doc/code) — 了解 Go 的项目管理方式
 
 重点理解：
 
-- Agno SDK 负责构建 Agents、Teams、Workflows。
-- AgentOS 是 FastAPI 运行时，用来把 Agent 系统变成服务。
-- AgentOS 可以管理 API、会话、数据库、记忆、知识、追踪、权限和人工审批。
-- 数据默认运行在自己的基础设施和数据库里。
+- Go 是静态类型、编译型语言，但语法简洁像动态语言。
+- Go 没有类（Class），用结构体（Struct）+ 方法（Method）+ 接口（Interface）实现面向对象。
+- Go 用 Goroutine 和 Channel 实现并发，"不要通过共享内存来通信，而要通过通信来共享内存"。
+- Go 的错误处理通过返回值传递 error，没有 try-catch 异常机制。
+- Go 的包管理从 $GOPATH 演进到 Go Modules（go.mod）。
 
 产出：
 
 - 在 `notes/concepts.md` 记录核心概念。
-- 画出一张简单关系图：Model -> Agent -> Tool/Memory/Knowledge -> Team/Workflow -> AgentOS。
+- 画出一张简单关系图：Goroutine -> Channel -> Select -> 并发模式。
 
-## 阶段 1：第一个 Agent
+## 阶段 1：基础语法
 
-目标：跑通最小 Agent，理解模型、指令、响应流。
+目标：掌握变量、类型、控制流、数组、切片、映射等基础。
 
 阅读：
 
-- [Build Your First Agent](https://docs.agno.com/first-agent.md)
-- [What are Agents?](https://docs.agno.com/agents/overview.md)
-- [Building Agents](https://docs.agno.com/agents/building-agents.md)
-- [Running Agents](https://docs.agno.com/agents/running-agents.md)
-- [Debugging Agents](https://docs.agno.com/agents/debugging-agents.md)
+- [A Tour of Go - Basics](https://go.dev/tour/basics/)
+- [Go Spec - Lexical elements](https://go.dev/ref/spec#Lexical_elements)
 
 练习：
 
-- 在 `examples/01_first_agent/` 创建一个最小 Agent。
-- 尝试不同 `instructions`，观察输出变化。
-- 使用 `stream=True` 打印流式响应。
-- 记录一次失败或不稳定输出，并写下如何调试。
+- 在 `examples/01_basics/` 创建文件，练习：
+  - 变量声明（var、:=）
+  - 基本类型（int、float、string、bool）
+  - 零值（Zero values）
+  - 类型转换
+  - 常量（const）
+  - for 循环（Go 只有 for）
+  - if/else、switch
+  - defer
+  - 数组（array）、切片（slice）、映射（map）
+  - range
 
 检查点：
 
-- 能解释 Agent 是“围绕无状态模型的有状态控制循环”。
-- 能说清楚 `instructions`、`model`、`markdown`、`print_response` 的作用。
+- 能解释 Go 中 := 和 var 的区别。
+- 能说明数组和切片的差异及使用场景。
+- 能写出 defer 的多种用法。
 
-## 阶段 2：工具调用 Tools
+## 阶段 2：函数与方法
 
-目标：让 Agent 从“会回答”变成“会行动”。
+目标：理解函数声明、多返回值、变参、闭包、方法。
 
 阅读：
 
-- [What are Tools?](https://docs.agno.com/tools/overview.md)
-- [Agent Tools](https://docs.agno.com/tools/agent.md)
-- [Creating Tools](https://docs.agno.com/tools/creating-tools/overview.md)
-- [Toolkits](https://docs.agno.com/tools/toolkits/overview.md)
-- [MCP Tools](https://docs.agno.com/tools/mcp/overview.md)
+- [A Tour of Go - Functions](https://go.dev/tour/basics/4)
+- [Go Spec - Function declarations](https://go.dev/ref/spec#Function_declarations)
+- [Effective Go - Functions](https://go.dev/doc/effective_go#functions)
 
 重点理解：
 
-- Tool 本质上是 Agent 可调用的 Python 函数或 Toolkit。
-- Agno 会根据函数签名和 docstring 生成模型可理解的工具定义。
-- 工具可以访问运行上下文、会话状态、媒体文件，也可以返回结构化结果。
-- 异步运行时，多个工具调用可以并发执行，前提是模型支持并行 function calling。
+- Go 函数支持多返回值，常用于返回 (result, error)。
+- 函数是一等公民：可以赋值给变量、作为参数传递、作为返回值。
+- 闭包（Closure）可以捕获外部变量。
+- 变参函数（Variadic Functions）使用 ... 语法。
+- 方法（Method）是带接收者（Receiver）的函数。
 
 练习：
 
-- 在 `examples/02_tools/` 写一个自定义工具，例如天气、计算器、文件摘要或网页搜索模拟工具。
-- 给工具补完整 docstring，观察工具描述如何影响调用。
-- 尝试一个官方 Toolkit，例如 HackerNews、Workspace 或 Web Search 相关工具。
-- 做一个“必须调用工具才能回答”的问题集。
+- 在 `examples/02_functions/` 创建文件，练习：
+  - 多返回值
+  - 命名返回值
+  - 错误返回模式
+  - 闭包
+  - 函数作为参数
+  - 变参函数
+  - 值接收者与指针接收者的方法
 
 检查点：
 
-- 能解释工具 schema 是怎么从 Python 函数生成的。
-- 能判断什么时候该写自定义工具，什么时候使用 Toolkit。
+- 能解释何时用值接收者，何时用指针接收者。
+- 能写出一个简单的高阶函数（接受函数作为参数）。
 
-## 阶段 3：模型、输入输出与结构化结果
+## 阶段 3：包与模块管理
 
-目标：掌握模型选择、响应格式和结构化输出。
-
-阅读：
-
-- [Models](https://docs.agno.com/models/overview.md)
-- [Input and Output](https://docs.agno.com/input-output/overview.md)
-- [Agent with Structured Output](https://docs.agno.com/agents/usage/agent-with-structured-output.md)
-- [Multimodal](https://docs.agno.com/multimodal/overview.md)
-
-练习：
-
-- 在 `examples/01_first_agent/` 中切换至少两种模型配置。
-- 用 Pydantic 定义结构化输出，例如 `TaskPlan`、`ResearchSummary` 或 `BugReport`。
-- 对同一个输入比较普通文本输出和结构化输出。
-
-检查点：
-
-- 能说明什么时候需要结构化输出。
-- 能将 Agent 输出稳定地交给下一段 Python 逻辑处理。
-
-## 阶段 4：数据库、历史与 Memory
-
-目标：让 Agent 有会话历史和跨会话记忆。
+目标：理解 Package、Module、导入路径、依赖管理。
 
 阅读：
 
-- [Database](https://docs.agno.com/database/overview.md)
-- [What is Memory?](https://docs.agno.com/memory/overview.md)
-- [Agent Memory](https://docs.agno.com/memory/agent/overview.md)
-- [Working with Memories](https://docs.agno.com/memory/working-with-memories/overview.md)
-- [History](https://docs.agno.com/history/overview.md)
+- [How to Write Go Code](https://go.dev/doc/code)
+- [Managing dependencies](https://go.dev/doc/modules/managing-dependencies)
+- [Go Modules Reference](https://go.dev/ref/mod)
+- [Using Go Modules](https://go.dev/blog/using-go-modules)
 
 重点理解：
 
-- Session history 保存对话消息，用于连续上下文。
-- Memory 保存用户事实和偏好，例如名字、习惯、长期偏好。
-- `update_memory_on_run=True` 是自动记忆，适合多数场景。
-- `enable_agentic_memory=True` 让 Agent 自己决定何时创建、更新、删除记忆。
-- 两种记忆模式不要同时启用，Agentic Memory 会优先生效。
+- 每个 Go 文件都属于一个 package，package 是代码组织的基本单元。
+- Go Modules 是依赖管理方案，go.mod 记录模块路径和依赖。
+- go.sum 保存依赖的校验和。
+- 大写字母开头的标识符是导出的（Exported），小写字母开头的是未导出的。
+- import 路径可以是标准库、第三方模块或项目内部路径。
 
 练习：
 
-- 在 `examples/03_storage_memory/` 用 SQLite 保存会话。
-- 让 Agent 记住一个用户偏好，然后在下一轮对话中调用出来。
-- 手动读取某个 `user_id` 的 memories，写到学习笔记里。
+- 在 `examples/03_packages_modules/` 创建一个简单的多包项目。
+- 使用 go mod init 初始化模块。
+- 引入一个第三方包（如 `github.com/google/uuid`），运行 go mod tidy。
+- 理解并实践 internal 包的使用（`go 1.4` 起约定 internal 目录不可被外部导入）。
 
 检查点：
 
-- 能区分 history、session state、memory。
-- 能说明生产环境中为什么必须关注用户隔离和数据清理。
+- 能解释 go.mod 和 go.sum 的作用。
+- 能用 go get 添加依赖，go mod tidy 清理依赖。
+- 能说明导出规则（首字母大写）。
 
-## 阶段 5：Knowledge 与 RAG
+## 阶段 4：结构体、嵌入与接口
 
-目标：让 Agent 基于自己的资料回答问题，而不是只依赖模型参数知识。
+目标：掌握 Go 面向对象编程的方式。
 
 阅读：
 
-- [Knowledge Overview](https://docs.agno.com/knowledge/overview.md)
-- [Knowledge Quickstart](https://docs.agno.com/knowledge/quickstart.md)
-- [Knowledge for Agents](https://docs.agno.com/knowledge/agents/overview.md)
-- [Search and Retrieval](https://docs.agno.com/knowledge/concepts/search-and-retrieval/overview.md)
-- [Readers](https://docs.agno.com/knowledge/concepts/readers/overview.md)
-- [Chunking](https://docs.agno.com/knowledge/concepts/chunking/overview.md)
-- [Embedders](https://docs.agno.com/knowledge/concepts/embedder/overview.md)
-- [Vector Stores](https://docs.agno.com/knowledge/vector-stores/pgvector/overview.md)
+- [A Tour of Go - Structs](https://go.dev/tour/moretypes/2)
+- [A Tour of Go - Methods and Interfaces](https://go.dev/tour/methods/)
+- [Effective Go - Interfaces](https://go.dev/doc/effective_go#interfaces_and_types)
+- [Go Spec - Interface types](https://go.dev/ref/spec#Interface_types)
 
 重点理解：
 
-- Knowledge 包含内容读取、分块、embedding、向量库检索和上下文注入。
-- Agentic RAG 是默认思路：Agent 判断何时搜索知识库。
-- Traditional RAG 更适合必须始终带上下文的流程。
-- 过滤、重排、混合搜索会直接影响回答质量。
+- 结构体（Struct）是字段的集合，没有类的概念。
+- 嵌入（Embedding）实现组合优于继承。
+- 接口（Interface）是方法签名的集合，鸭子类型（Duck Typing）。
+- Go 接口是隐式实现的（不需要显式声明 implements）。
+- 空接口 `interface{}`（或 `any`）可以表示任意类型。
+- 类型断言（Type Assertion）和类型开关（Type Switch）。
 
 练习：
 
-- 在 `examples/04_knowledge/` 用本地 Markdown 或 URL 构建一个小知识库。
-- 使用 ChromaDB 或其他本地向量库做第一版。
-- 准备 5 个问题，比较有无 knowledge 时的回答差异。
-- 记录一次错误引用或答非所问，尝试通过 chunking 或过滤改善。
+- 在 `examples/04_structs_interfaces/` 创建文件，练习：
+  - 定义结构体和嵌入
+  - 为结构体实现方法
+  - 定义接口并实现
+  - 多态：通过接口参数实现通用行为
+  - 类型断言和类型开关
+  - 使用 `io.Reader` 和 `io.Writer` 接口
 
 检查点：
 
-- 能解释 reader、chunker、embedder、vector db 各自负责什么。
-- 能说明 Agentic RAG 与 Traditional RAG 的差别。
+- 能解释为什么 Go 不通过 extends 而通过嵌入实现代码复用。
+- 能说明接口的隐式实现带来什么好处。
+- 能准确描述空接口 `any` 的使用限制。
 
-## 阶段 6：Teams 多 Agent 协作
+## 阶段 5：并发编程
 
-目标：用多个专长 Agent 分工解决复杂任务。
+目标：掌握 Goroutine、Channel、Select、Mutex、WaitGroup。
 
 阅读：
 
-- [What are Teams?](https://docs.agno.com/teams/overview.md)
-- [Building Teams](https://docs.agno.com/teams/building-teams.md)
-- [Running Teams](https://docs.agno.com/teams/running-teams.md)
-- [Debugging Teams](https://docs.agno.com/teams/debugging-teams.md)
-- [Delegation](https://docs.agno.com/teams/delegation.md)
+- [A Tour of Go - Concurrency](https://go.dev/tour/concurrency/)
+- [Go Concurrency Patterns](https://www.youtube.com/watch?v=f6kdp27TYZs)
+- [Advanced Go Concurrency Patterns](https://www.youtube.com/watch?v=QDDwwePbDtw)
+- [Share Memory by Communicating](https://go.dev/doc/codewalk/sharemem/)
+- [Go Blog - Pipelines and cancellation](https://go.dev/blog/pipelines)
 
 重点理解：
 
-- Team 是一组 Agents 或子 Teams，由 leader 根据角色进行协调。
-- Team 适合多领域、多工具、多上下文的任务。
-- 单 Agent 更便宜、更简单；不确定时先从单 Agent 开始。
-- Team 模式包括 coordinate、route、broadcast 等协作方式。
+- Goroutine 是轻量级线程，由 Go 运行时调度。
+- Channel 是 Goroutine 之间通信的管道。
+- 无缓冲 Channel 是同步的，有缓冲 Channel 是异步的。
+- Select 用于多路 Channel 操作。
+- sync.Mutex、sync.RWMutex 提供传统锁机制。
+- sync.WaitGroup 用于等待一组 Goroutine 完成。
+- context.Context 用于传递取消信号、超时和请求范围的值。
 
 练习：
 
-- 在 `examples/05_teams/` 创建一个研究团队：Researcher、Writer、Reviewer。
-- 给不同成员配置不同工具和角色。
-- 比较单 Agent 与 Team 在同一任务上的效果、成本和可调试性。
+- 在 `examples/05_concurrency/` 创建文件，练习：
+  - 启动 Goroutine
+  - 无缓冲 Channel 通信
+  - 有缓冲 Channel 通信
+  - Select 多路复用
+  - Mutex 互斥锁
+  - WaitGroup 同步
+  - Context 取消和超时
+  - 简单的并发模式：Pipeline、Fan-out/Fan-in
 
 检查点：
 
-- 能判断“这个任务是否真的需要 Team”。
-- 能定位某个成员输出质量差时该改 role、instructions 还是工具。
+- 能用 Channel 在 Goroutine 之间安全传递数据。
+- 能说明无缓冲和有缓冲 Channel 的行为差异。
+- 能使用 Context 实现超时控制。
+- 能避免常见的并发陷阱（Goroutine 泄漏、死锁）。
 
-## 阶段 7：Workflows 固化流程
+## 阶段 6：错误处理与 Panic/Recover
 
-目标：把重复任务变成可预测、可审计的步骤流水线。
+目标：掌握 Go 的错误处理哲学。
 
 阅读：
 
-- [What are Workflows?](https://docs.agno.com/workflows/overview.md)
-- [Building Workflows](https://docs.agno.com/workflows/building-workflows.md)
-- [Running Workflows](https://docs.agno.com/workflows/running-workflows.md)
-- [Conversational Workflows](https://docs.agno.com/workflows/conversational-workflows.md)
+- [Effective Go - Errors](https://go.dev/doc/effective_go#errors)
+- [Go Blog - Error Handling and Go](https://go.dev/blog/error-handling-and-go)
+- [Go Blog - Defer, Panic, and Recover](https://go.dev/blog/defer-panic-and-recover)
+- [Working with Errors in Go 1.13](https://go.dev/blog/go1.13-errors)
 
 重点理解：
 
-- Workflow 由 Steps 组成，Step 可以是 Agent、Team、Function 或嵌套 Workflow。
-- 步骤可以顺序、并行、循环或按条件执行。
-- 需要可重复、可审计、输入输出明确的任务时，优先考虑 Workflow。
-- 需要开放式协作和动态分工时，优先考虑 Team。
+- Go 通过返回值传递 error，调用者负责检查。
+- errors.New() 和 fmt.Errorf() 创建错误。
+- Go 1.13+ 的错误包装：fmt.Errorf("%w", err) 和 errors.Unwrap()。
+- errors.Is() 和 errors.As() 用于错误检查和类型断言。
+- panic 是严重错误，用于不可恢复的情况。
+- recover 在 defer 中捕获 panic。
+- 不要让 panic 跨越包边界。
 
 练习：
 
-- 在 `examples/06_workflows/` 写一个“资料收集 -> 摘要 -> 审稿 -> 输出”的 Workflow。
-- 加一个普通 Python function 作为中间步骤，例如清洗输入或保存结果。
-- 记录每一步的输入输出。
+- 在 `examples/06_error_handling/` 创建文件，练习：
+  - 检查和处理 error
+  - 创建自定义错误类型
+  - 错误包装和解包
+  - 使用 errors.Is 和 errors.As
+  - defer + recover 捕获 panic
 
 检查点：
 
-- 能解释 Team 和 Workflow 的边界。
-- 能把一个自由对话任务改造成可重复流程。
+- 能区分使用 error 和 panic 的场景。
+- 能正确包装和展开错误链。
+- 能说明 errors.Is 和 errors.As 的区别。
 
-## 阶段 8：AgentOS 服务化
+## 阶段 7：测试
 
-目标：把本地 Agent 系统变成可运行的 API 服务。
+目标：掌握 Go 的测试、基准测试和模糊测试。
 
 阅读：
 
-- [What is AgentOS?](https://docs.agno.com/agent-os/introduction.md)
-- [Run Your AgentOS](https://docs.agno.com/agent-os/run-your-os.md)
-- [Connect Your AgentOS](https://docs.agno.com/agent-os/connect-your-os.md)
-- [Using the API](https://docs.agno.com/agent-os/using-the-api.md)
-- [AgentOS Configuration](https://docs.agno.com/agent-os/config.md)
-- [AgentOS Security](https://docs.agno.com/agent-os/security/overview.md)
-- [Tracing](https://docs.agno.com/agent-os/tracing/overview.md)
+- [How to Write Go Code - Testing](https://go.dev/doc/code#Testing)
+- [Testing package](https://pkg.go.dev/testing)
+- [Tutorial: Getting started with fuzzing](https://go.dev/doc/tutorial/fuzz/)
+- [Coverage for Go applications](https://go.dev/doc/build-cover)
 
 重点理解：
 
-- AgentOS 是 FastAPI app，用于运行 agents、teams、workflows。
-- 它提供流式 API、会话隔离、持久化、追踪、调度、RBAC、审计和审批。
-- Control Plane 是管理和调试 UI，运行时和数据仍在自己的基础设施里。
+- 测试文件以 `_test.go` 结尾。
+- 测试函数以 `Test` 开头，签名 `func(t *testing.T)`。
+- 基准测试以 `Benchmark` 开头，签名 `func(b *testing.B)`。
+- 子测试（Subtests）使用 `t.Run()` 组织。
+- 表驱动测试（Table-Driven Tests）是 Go 社区的惯用模式。
+- `t.Parallel()` 标记测试可以并行运行。
+- 模糊测试（Fuzzing）自动生成随机输入。
+- `go test -cover` 查看代码覆盖率。
 
 练习：
 
-- 在 `examples/07_agentos/` 把前面做过的 Agent 包装成 AgentOS。
-- 启动本地服务并打开 `/docs`。
-- 连接 [os.agno.com](https://os.agno.com)，查看 sessions 和 traces。
-- 给服务添加 SQLite 数据库，确认重启后会话仍可查询。
+- 在 `examples/07_testing/` 为之前的代码编写测试。
+  - 表驱动测试
+  - 子测试
+  - 基准测试
+  - 模拟（Mock）外部依赖
+  - 使用 `go test -cover` 查看覆盖率
 
 检查点：
 
-- 能说明 SDK 和 AgentOS 的职责差异。
-- 能解释为什么服务化后必须考虑 auth、隔离、日志和审计。
+- 能写出规范的表驱动测试。
+- 能区分 Test 和 Benchmark 的使用场景。
+- 能使用 Mock 隔离外部依赖。
 
-## 阶段 9：评测、观测与生产化
+## 阶段 8：Web 服务
 
-目标：从“能跑”推进到“能评估、能调试、能上线”。
+目标：能用 Go 构建 RESTful API。
 
 阅读：
 
-- [Evals](https://docs.agno.com/evals/overview.md)
-- [Examples: Evals](https://docs.agno.com/examples/evals/overview.md)
-- [AgentOS Tracing](https://docs.agno.com/agent-os/tracing/overview.md)
-- [Deploy AgentOS](https://docs.agno.com/deploy/introduction.md)
-- [Human-in-the-Loop](https://docs.agno.com/agent-os/usage/hitl.md)
-- [Approvals](https://docs.agno.com/agent-os/approvals/overview.md)
+- [Tutorial: Developing a RESTful API with Go and Gin](https://go.dev/doc/tutorial/web-service-gin)
+- [Writing Web Applications](https://go.dev/doc/articles/wiki/)
+- [net/http package](https://pkg.go.dev/net/http)
+
+重点理解：
+
+- `net/http` 标准库提供 HTTP 客户端和服务器。
+- `http.Handler` 和 `http.HandlerFunc` 是核心接口。
+- 路由（Routing）、中间件（Middleware）和处理函数。
+- JSON 编解码：`encoding/json`。
+- Gin 是流行的第三方 Web 框架。
 
 练习：
 
-- 在 `examples/08_evals_observability/` 建一个小评测集。
-- 对同一个 Agent 的不同 instructions 版本做对比。
-- 记录 token、延迟、失败样例、工具调用次数。
-- 尝试一个需要人工审批的工具调用流程。
+- 在 `examples/08_web_service/` 创建文件，练习：
+  - 用 net/http 构建简单 HTTP 服务器
+  - GET / POST / PUT / DELETE 处理
+  - JSON 请求和响应
+  - 中间件（日志、认证）
+  - 用 Gin 重写同样功能
 
 检查点：
 
-- 能定义一个 Agent 的成功标准。
-- 能用 traces 定位回答错误、工具失败或上下文污染。
+- 能用 net/http 构建基本的 RESTful API。
+- 理解中间件的实现原理。
+- 能比较 net/http 和 Gin 的差异。
+
+## 阶段 9：数据库操作
+
+目标：用 Go 操作关系型数据库。
+
+阅读：
+
+- [Tutorial: Accessing a relational database](https://go.dev/doc/tutorial/database-access)
+- [Accessing relational databases](https://go.dev/doc/database/)
+- [database/sql package](https://pkg.go.dev/database/sql)
+
+重点理解：
+
+- `database/sql` 提供通用数据库接口。
+- 需要导入具体数据库驱动（如 `github.com/mattn/go-sqlite3`）。
+- `sql.DB` 管理连接池。
+- Query、QueryRow、Exec 的区别。
+- 预编译语句（Prepared Statements）。
+- 事务（Transactions）。
+- SQL 注入防护。
+- Context 超时和取消。
+
+练习：
+
+- 在 `examples/09_database/` 创建文件，练习：
+  - 连接 SQLite
+  - 创建表
+  - CRUD 操作
+  - 事务
+  - 预编译语句
+  - Context 超时
+
+检查点：
+
+- 能用 database/sql 完成基本 CRUD。
+- 能正确处理事务的提交和回滚。
+- 能防止 SQL 注入。
+
+## 阶段 10：CLI 应用
+
+目标：用 Go 构建命令行工具。
+
+阅读：
+
+- [flag package](https://pkg.go.dev/flag)
+- [Cobra](https://github.com/spf13/cobra) — 流行的 CLI 框架
+- [Building an awesome CLI app in Go](https://spf13.com/presentation/building-an-awesome-cli-app-in-go-oscon/)
+
+练习：
+
+- 在 `examples/10_cli_app/` 创建文件，练习：
+  - 使用 flag 包解析命令行参数
+  - 构建简单 CLI 工具（如文件操作、数据转换）
+  - 使用 Cobra 构建带子命令的 CLI
+
+检查点：
+
+- 能用 flag 标准库处理命令行参数。
+- 能使用 Cobra 构建多子命令的 CLI 工具。
 
 ## 综合项目建议
 
 选择一个足够小但覆盖核心能力的项目：
 
-1. 文档问答助手：读取本仓库笔记，回答 Agno 学习问题。
-2. 研究写作流水线：搜索资料、生成摘要、写文章、审稿。
-3. 个人助理：记住用户偏好，调用工具整理日程或任务。
-4. 本地文件整理 Agent：参考官方 Sorting Hat 示例分析并整理目录。
+1. 文件处理工具：读取、转换、统计文件内容。
+2. 简单 Web 服务：提供 CRUD API + 数据库存储。
+3. 并发爬虫：并发获取多个 URL 的内容并汇总。
+4. CLI 代办事项（Todo）工具。
 
 最低验收标准：
 
-- 有一个 Agent 使用至少一个自定义工具。
-- 有持久化数据库，能保存 session 或 memory。
-- 有 Knowledge 或 Team/Workflow 中的任意一个进阶能力。
-- 能通过 AgentOS 作为服务运行。
-- README 或 `notes/` 中有运行方式、失败记录和复盘。
+- 使用至少一个自定义包和模块。
+- 有测试覆盖。
+- 有 error 处理。
+- 有并发应用（Goroutine + Channel 或 Context）。
+- 代码符合 Effective Go 规范。
 
 ## 学习节奏
 
 建议每个阶段都按这个循环推进：
 
-1. 阅读对应官方文档。
+1. 阅读对应官方文档和 A Tour of Go。
 2. 写一个最小可运行示例。
 3. 记录运行命令、输出截图或关键日志。
 4. 写下一个失败案例和修正方式。
@@ -400,43 +453,43 @@ uv pip install -U "agno[os]"
 推荐 commit 粒度：
 
 ```text
-docs: add agno concept notes
-feat: add first agno agent example
-feat: add custom tool example
-feat: add sqlite memory example
-feat: add knowledge rag example
-feat: add research team example
-feat: add content workflow example
-feat: serve agent with agentos
-docs: summarize eval findings
+docs: add go core concept notes
+feat: add go basics examples
+feat: add go functions and methods examples
+feat: add go packages and modules examples
+feat: add go structs and interfaces examples
+feat: add go concurrency examples
+feat: add go error handling examples
+feat: add go testing examples
+feat: add go web service examples
+feat: add go database examples
+feat: add go cli app examples
 ```
 
 ## 官方文档入口
 
-- [Agno Introduction](https://docs.agno.com/introduction.md)
-- [First Agent](https://docs.agno.com/first-agent.md)
-- [Agents](https://docs.agno.com/agents/overview.md)
-- [Tools](https://docs.agno.com/tools/overview.md)
-- [Models](https://docs.agno.com/models/overview.md)
-- [Database](https://docs.agno.com/database/overview.md)
-- [Memory](https://docs.agno.com/memory/overview.md)
-- [Knowledge](https://docs.agno.com/knowledge/overview.md)
-- [Teams](https://docs.agno.com/teams/overview.md)
-- [Workflows](https://docs.agno.com/workflows/overview.md)
-- [AgentOS](https://docs.agno.com/agent-os/introduction.md)
-- [Examples](https://docs.agno.com/examples/introduction.md)
-- [API Reference](https://docs.agno.com/api-reference/home/api-information.md)
-- [Full Documentation Index](https://docs.agno.com/llms.txt)
+- [Go 官网](https://go.dev/)
+- [A Tour of Go（交互式教程）](https://go.dev/tour/)
+- [Go by Example（代码示例）](https://gobyexample.com/)
+- [Effective Go（最佳实践）](https://go.dev/doc/effective_go)
+- [Go Language Specification（语言规范）](https://go.dev/ref/spec)
+- [Standard Library（标准库文档）](https://pkg.go.dev/std)
+- [Go User Manual（用户手册）](https://go.dev/doc/)
+- [Go Modules Reference（模块参考）](https://go.dev/ref/mod)
+- [Go Memory Model（内存模型）](https://go.dev/ref/mem)
+- [Go Blog（官方博客）](https://go.dev/blog/)
+- [Go Wiki（社区维基）](https://go.dev/wiki/)
 
 ## 当前进度
 
-- [ ] 阶段 0：理解 Agno 全貌
-- [ ] 阶段 1：第一个 Agent
-- [ ] 阶段 2：工具调用 Tools
-- [ ] 阶段 3：模型、输入输出与结构化结果
-- [ ] 阶段 4：数据库、历史与 Memory
-- [ ] 阶段 5：Knowledge 与 RAG
-- [ ] 阶段 6：Teams 多 Agent 协作
-- [ ] 阶段 7：Workflows 固化流程
-- [ ] 阶段 8：AgentOS 服务化
-- [ ] 阶段 9：评测、观测与生产化
+- [ ] 阶段 0：理解 Go 全貌
+- [ ] 阶段 1：基础语法
+- [ ] 阶段 2：函数与方法
+- [ ] 阶段 3：包与模块管理
+- [ ] 阶段 4：结构体、嵌入与接口
+- [ ] 阶段 5：并发编程
+- [ ] 阶段 6：错误处理与 Panic/Recover
+- [ ] 阶段 7：测试
+- [ ] 阶段 8：Web 服务
+- [ ] 阶段 9：数据库操作
+- [ ] 阶段 10：CLI 应用
