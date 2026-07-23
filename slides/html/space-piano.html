@@ -18,16 +18,21 @@
   .tl h1 {
     font-size: 13px; font-weight: 400; letter-spacing: .42em;
     color: rgba(242,236,223,.95); text-shadow: 0 0 14px rgba(160,180,255,.5);
+    padding-bottom: 8px; border-bottom: 1px solid rgba(242,236,223,.18);
   }
-  .tl p { margin-top: 9px; font-size: 9px; letter-spacing: .3em; color: rgba(242,236,223,.5); }
   .bl {
     position: absolute; left: 32px; bottom: 26px;
     font-size: 9px; letter-spacing: .22em; color: rgba(242,236,223,.6); line-height: 2;
   }
-  .br {
+  .bc {
     position: absolute; left: 50%; bottom: 26px; transform: translateX(-50%);
-    font-size: 9px; letter-spacing: .22em; color: rgba(242,236,223,.7); line-height: 2;
+    font-size: 9px; letter-spacing: .22em; color: rgba(242,236,223,.5); line-height: 2;
     white-space: nowrap;
+  }
+  .br {
+    position: absolute; left: 50%; bottom: 33%; transform: translateX(-50%);
+    font-size: 10px; letter-spacing: .34em; color: rgba(242,236,223,.75); line-height: 2;
+    white-space: nowrap; text-shadow: 0 0 10px rgba(255,255,255,.35);
   }
   .scaleui {
     position: absolute; right: 32px; bottom: 66px;
@@ -69,13 +74,11 @@
 <body>
 <div id="ui">
   <div class="tl">
-    <h1>Celestial Piano</h1>
-    <p>A white grand upon the moon</p>
+    <h1>Moon Piano</h1>
   </div>
   <div id="camhint">Open cam · play with hand</div>
-  <div class="bl">
-    qwertyuiop → c3–e4 &nbsp;·&nbsp; asdfghjkl;' → f4–b5 &nbsp;·&nbsp; 1–0 → black keys &nbsp;·&nbsp; +/− → scale
-  </div>
+  <div class="bl" id="handstat">Hand track [v] – off</div>
+  <div class="bc">Left: q–p &nbsp;|&nbsp; right: a–l ;' &nbsp;|&nbsp; black: 1–0 &nbsp;|&nbsp; mouse: click or hold &amp; slide &nbsp;|&nbsp; +/−: scale</div>
   <div class="scaleui"><span>Scale</span><input id="scale" type="range" min="45" max="180" value="100"></div>
   <div class="br" id="modehint">Click piano to play</div>
 </div>
@@ -108,18 +111,17 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x04060f);
 
 const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.05, 3000);
-camera.position.set(1.5, 4.5, 15.5);
+camera.position.set(32, 26, -11);
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.target.set(0, 0.72, 0.35);
 controls.enableDamping = true;
 controls.dampingFactor = 0.06;
-controls.autoRotate = true;
-controls.autoRotateSpeed = 0.5;
+controls.autoRotate = false; // the reference opening is a static framing
 controls.enablePan = false;
 controls.minDistance = 2.0;
 controls.maxDistance = 60.0;
-controls.maxPolarAngle = 1.62;
+controls.maxPolarAngle = 1.75;
 
 // Environment reflections for the glossy lacquer — applied per-material (NOT as a
 // scene-wide IBL), so the moon is lit only by the grazing sun and keeps its terminator
@@ -133,20 +135,23 @@ let envTex;
 
 // Lights — the night side of the moon must stay truly black (terminator look),
 // so ambient fill is minimal; the piano carries its own light
-scene.add(new THREE.AmbientLight(0x39435f, 0.08));
+scene.add(new THREE.AmbientLight(0x39435f, 0.05));
 scene.add(new THREE.HemisphereLight(0x93a5cc, 0x4a4a52, 0.06));
-const fillLight = new THREE.DirectionalLight(0x9db4e8, 0.25); // cool rim from behind-left
+const fillLight = new THREE.DirectionalLight(0x9db4e8, 0.15); // cool rim from behind-left
 fillLight.position.set(-10, 9, -14);
 scene.add(fillLight);
-const keyLight = new THREE.PointLight(0xffe9c9, 6.5, 10, 2);  // warm light over the piano
-keyLight.position.set(0, 3.2, 2.0);
+const camFill = new THREE.PointLight(0xdfe8ff, 4, 5, 2); // soft fill, piano area only
+camFill.position.set(8, 2.5, -4);
+scene.add(camFill);
+const keyLight = new THREE.PointLight(0xffe9c9, 16, 12, 2);  // warm light over the piano
+keyLight.position.set(5, 3, -2);
 scene.add(keyLight);
 
 // Post-processing: bloom
 const composer = new EffectComposer(renderer);
 composer.addPass(new RenderPass(scene, camera));
 const bloomPass = new UnrealBloomPass(
-  new THREE.Vector2(window.innerWidth / 2, window.innerHeight / 2), 0.24, 0.3, 0.9);
+  new THREE.Vector2(window.innerWidth / 2, window.innerHeight / 2), 0.2, 0.3, 0.9);
 composer.addPass(bloomPass);
 composer.addPass(new OutputPass());
 
@@ -402,7 +407,7 @@ const nebulae = [];
   for (let i = 0; i < 5; i++) {
     const s = new THREE.Sprite(new THREE.SpriteMaterial({
       map: TEX.glow, color: tints[i], transparent: true,
-      opacity: 0.04 + Math.random() * 0.05, blending: THREE.AdditiveBlending, depthWrite: false,
+      opacity: 0.02 + Math.random() * 0.03, blending: THREE.AdditiveBlending, depthWrite: false,
       rotation: Math.random() * Math.PI,
     }));
     const v = new THREE.Vector3().randomDirection().multiplyScalar(480);
@@ -415,38 +420,34 @@ const nebulae = [];
 }
 
 /* ============================================================
-   3. The moon: a small moon whose bright surface is the ground
+   3. One body: the moon IS the ground — the piano stands on its
+      surface at the day/night line, day side curving up at left
    ============================================================ */
 let moon;
 {
-  const R = 120;
-  const bump = moonTexture();               // procedural tile: close-up micro relief
-  bump.repeat.set(48, 24);
-  const photo = new THREE.TextureLoader().load( // real lunar surface (CORS-enabled)
-    'https://raw.githubusercontent.com/mrdoob/three.js/r180/examples/textures/planets/moon_1024.jpg');
-  photo.colorSpace = THREE.SRGBColorSpace;
+  const R = 300;
+  const bump = moonTexture();               // procedural regolith: fine, uniform, no giant rays
+  bump.repeat.set(150, 75);
   moon = new THREE.Mesh(
     new THREE.SphereGeometry(R, 96, 64),
     new THREE.MeshStandardMaterial({
-      map: photo, bumpMap: bump, bumpScale: 0.05, roughness: 0.96, metalness: 0,
-      color: 0xa8a9ae, // dim the photo texture toward the reference's dark regolith
+      map: bump, bumpMap: bump, bumpScale: 0.1, roughness: 0.96, metalness: 0,
       envMapIntensity: 0, // no ambient IBL on the moon — keeps the terminator stark
     })
   );
   moon.position.set(0, -R, 0);   // surface touches y=0 right under the piano
-  moon.rotation.x = 0.9;         // keep the pinched UV pole away from the piano
+  moon.rotation.set(0.4, 2.2, 0); // keep the pinched UV pole and the big ray streaks away from the piano
   moon.receiveShadow = true;
   scene.add(moon);
 
-  // sun grazing right at the horizon (side-on): the day/night terminator runs
-  // vertically through the frame — lit ground to the left, night to the right,
-  // and the piano stands in the dusk glow in between
-  const sun = new THREE.DirectionalLight(0xfff1dc, 14.0);
-  sun.position.set(-40, 3, -2);
+  // very low grazing sun (~4°): the piano sits in the terminator's dusk while
+  // the far ground toward the upper-left brightens into the day side
+  const sun = new THREE.DirectionalLight(0xfff1dc, 7.0);
+  sun.position.set(-20, 0.5, 20);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
   const sc = sun.shadow.camera;
-  sc.left = -7; sc.right = 7; sc.top = 7; sc.bottom = -7; sc.near = 26; sc.far = 55;
+  sc.left = -7; sc.right = 7; sc.top = 7; sc.bottom = -7; sc.near = 18; sc.far = 42;
   sc.updateProjectionMatrix();
   sun.shadow.bias = -0.0004;
   scene.add(sun, sun.target);
@@ -455,7 +456,7 @@ let moon;
   const pool = new THREE.Mesh(
     new THREE.CircleGeometry(5.5, 48),
     new THREE.MeshBasicMaterial({
-      map: TEX.glow, color: 0x5a70a8, transparent: true, opacity: 0.18,
+      map: TEX.glow, color: 0x5a70a8, transparent: true, opacity: 0.13,
       blending: THREE.AdditiveBlending, depthWrite: false,
     })
   );
@@ -475,9 +476,9 @@ let pianoScaleCur = 1, pianoScaleTarget = 1;
 const SCALE_MIN = 0.45, SCALE_MAX = 1.8;
 
 const lacquerMat = new THREE.MeshPhysicalMaterial({
-  color: 0xfdfdfd, metalness: 0, roughness: 0.12,
-  clearcoat: 1, clearcoatRoughness: 0.06,
-  envMapIntensity: 0.55,
+  color: 0xfdfdfd, metalness: 0, roughness: 0.22,
+  clearcoat: 1, clearcoatRoughness: 0.14,
+  envMapIntensity: 0.28,
 });
 
 // Grand-piano outline in top view (x right, z forward toward the player)
@@ -536,7 +537,7 @@ let lidMesh;
   piano.add(rodBetween(new THREE.Vector3(0.52, 0.97, 0.15), attach, 0.012));
 }
 
-// Legs + bench
+// Legs + pedal lyre + bench
 {
   const legGeo = new THREE.CylinderGeometry(0.032, 0.045, 0.64, 14);
   [[-0.62, 0.82], [0.62, 0.82], [-0.35, -0.92]].forEach(([x, z]) => {
@@ -544,6 +545,10 @@ let lidMesh;
     leg.position.set(x, 0.32, z);
     piano.add(leg);
   });
+  // pedal lyre hanging under the body, between the front legs
+  const lyre = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.3, 0.07), lacquerMat);
+  lyre.position.set(0, 0.46, 0.8);
+  piano.add(lyre);
   const bench = new THREE.Group();
   bench.position.set(0, 0, 2.05);
   const top = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.045, 0.32), lacquerMat);
@@ -594,11 +599,11 @@ const whiteToKey = [];
 {
   const whiteMatBase = new THREE.MeshPhysicalMaterial({
     color: 0xfbf8f1, roughness: 0.2, clearcoat: 0.7, clearcoatRoughness: 0.12,
-    envMapIntensity: 0.5, emissive: 0xfff3da, emissiveIntensity: 0,
+    envMapIntensity: 0.3, emissive: 0xfff3da, emissiveIntensity: 0,
   });
   const blackMatBase = new THREE.MeshPhysicalMaterial({
     color: 0x14161b, roughness: 0.18, clearcoat: 0.9, clearcoatRoughness: 0.08,
-    envMapIntensity: 0.6, emissive: 0xbfd4ff, emissiveIntensity: 0,
+    envMapIntensity: 0.4, emissive: 0xbfd4ff, emissiveIntensity: 0,
   });
   const whiteGeo = new THREE.BoxGeometry(WW * 0.92, 0.018, WHITE_LEN);
   const blackGeo = new THREE.BoxGeometry(WW * 0.55, 0.02, BLACK_LEN);
@@ -944,8 +949,8 @@ function flyTo(toP, lookAt, dur, onDone) {
   };
   controls.enabled = false;
 }
-const SEAT_POS = new THREE.Vector3(0, 1.42, 2.52);
-const SEAT_LOOK = new THREE.Vector3(0, 0.71, 1.02);
+const SEAT_POS = new THREE.Vector3(0, 1.34, 2.15);
+const SEAT_LOOK = new THREE.Vector3(0, 0.70, 0.98);
 function enterPlay() {
   orbitCam.pos.copy(camera.position);
   orbitCam.quat.copy(camera.quaternion);
@@ -1073,8 +1078,10 @@ async function initHands() {
       runningMode: 'VIDEO',
       numHands: 2,
     });
+    document.getElementById('handstat').textContent = 'Hand track [v] – on';
   } catch (err) {
     console.warn('Hand tracking unavailable:', err);
+    document.getElementById('handstat').textContent = 'Hand track [v] – unavailable';
     flashCamWarn('Camera unavailable · mouse & keys only');
   }
 }
