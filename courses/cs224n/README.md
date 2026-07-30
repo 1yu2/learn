@@ -62,10 +62,10 @@
 
 | 项目 | 内容 | 材料 | 状态 |
 | --- | --- | --- | --- |
-| Assignment 1 | Introduction to word vectors | [code](https://web.stanford.edu/class/cs224n/assignments_w26/a1.zip) · [handout（官网 schedule 内）](https://web.stanford.edu/class/cs224n/#schedule) | ⬜ |
-| Assignment 2 | Neural network foundations, tensor derivatives, dependency parsing | [code](https://web.stanford.edu/class/cs224n/assignments_w26/a2.zip) · [handout](https://web.stanford.edu/class/cs224n/assignments_w26/a2.pdf) · [latex](https://web.stanford.edu/class/cs224n/assignments_w26/a2_tex.zip) | ⬜ |
-| Assignment 3 | Self-attention and Transformers | [code](https://web.stanford.edu/class/cs224n/assignments_w26/a3.zip) · [handout](https://web.stanford.edu/class/cs224n/assignments_w26/a3.pdf) · [latex](https://web.stanford.edu/class/cs224n/assignments_w26/a3_tex.zip) | ⬜ |
-| Assignment 4 | LLM benchmarking and evaluation | [code](https://web.stanford.edu/class/cs224n/assignments_w26/a4.zip) · [handout](https://web.stanford.edu/class/cs224n/assignments_w26/a4.pdf) · [latex](https://web.stanford.edu/class/cs224n/assignments_w26/a4_tex.zip) | ⬜ |
+| Assignment 1 | Introduction to word vectors | `assignments/a1/` · [handout（官网 schedule 内）](https://web.stanford.edu/class/cs224n/#schedule) | ⬜ |
+| Assignment 2 | Neural network foundations, tensor derivatives, dependency parsing | `assignments/a2/` · [handout](https://web.stanford.edu/class/cs224n/assignments_w26/a2.pdf) · [latex](https://web.stanford.edu/class/cs224n/assignments_w26/a2_tex.zip) | ⬜ |
+| Assignment 3 | Self-attention and Transformers | `assignments/a3/` · [handout](https://web.stanford.edu/class/cs224n/assignments_w26/a3.pdf) · [latex](https://web.stanford.edu/class/cs224n/assignments_w26/a3_tex.zip) | ⬜ |
+| Assignment 4 | LLM benchmarking and evaluation | `assignments/a4/` · [handout](https://web.stanford.edu/class/cs224n/assignments_w26/a4.pdf) · [latex](https://web.stanford.edu/class/cs224n/assignments_w26/a4_tex.zip) | ⬜ |
 | Default Final Project | 实现极简版 GPT-2 并做 3 个下游任务 | [handout](https://web.stanford.edu/class/cs224n/project_w25/CS_224n__Default_Final_Project__Build_GPT_2.pdf) · [instructions](https://web.stanford.edu/class/cs224n/project/DFP_Instructions.pdf) | ⬜ |
 
 ## 使用说明

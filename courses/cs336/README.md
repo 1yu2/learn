@@ -9,4 +9,12 @@
 
 ## 作业
 
-（作业代码放在 `assignments/`，使用课程官方仓库的依赖环境）
+作业代码已 clone 到 `assignments/`（Spring 2025 版，各为独立 git 仓库，不入本库）：
+
+| 作业 | 内容 | 目录 | 状态 |
+| --- | --- | --- | --- |
+| Assignment 1 | Basics（tokenizer、Transformer、训练流程） | `assignments/assignment1-basics/` | ⬜ |
+| Assignment 2 | Systems（并行、性能优化） | `assignments/assignment2-systems/` | ⬜ |
+| Assignment 3 | Scaling（scaling laws） | `assignments/assignment3-scaling/` | ⬜ |
+| Assignment 4 | Data（数据清洗/处理） | `assignments/assignment4-data/` | ⬜ |
+| Assignment 5 | Alignment（SFT/RLHF） | `assignments/assignment5-alignment/` | ⬜ |

@@ -14,3 +14,10 @@ config.py
 
 # OS
 .DS_Store
+
+# CS336 作业为独立 clone 的仓库，不入本库
+courses/cs336/assignments/assignment*/
+
+# books/ 下为独立 clone 的书籍源码仓库，不入本库
+books/*/
+!books/notes/
