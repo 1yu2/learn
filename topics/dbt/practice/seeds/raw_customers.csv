@@ -1,0 +1,7 @@
+customer_id,customer_name,plan_tier,region
+C001,Acme 科技,enterprise,华东
+C002,蓝海电商,pro,华南
+C003,远山制造,enterprise,华北
+C004,星辰教育,basic,华东
+C005,乐跑物流,pro,西南
+C006,晨曦医疗,basic,华中

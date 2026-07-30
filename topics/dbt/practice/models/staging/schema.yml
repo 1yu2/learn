@@ -1,0 +1,47 @@
+version: 2
+
+models:
+  - name: stg_tickets
+    description: "工单明细：清洗原始工单（类型转换、状态/优先级标准化、空串转 NULL）。"
+    columns:
+      - name: ticket_id
+        description: "工单唯一 ID"
+        tests:
+          - not_null
+          - unique
+      - name: status
+        description: "工单状态（小写标准化）"
+        tests:
+          - accepted_values:
+              arguments:
+                values: ["open", "in_progress", "pending_customer", "resolved", "escalated"]
+      - name: created_date
+        tests:
+          - not_null
+      - name: customer_id
+        tests:
+          - relationships:
+              arguments:
+                to: ref('stg_customers')
+                field: customer_id
+
+  - name: stg_customers
+    description: "客户维表：套餐等级与地区。"
+    columns:
+      - name: customer_id
+        tests:
+          - not_null
+          - unique
+
+  - name: stg_ticket_comments
+    description: "工单评论：用于响应时长等指标。"
+    columns:
+      - name: comment_id
+        tests:
+          - not_null
+          - unique
+      - name: author_type
+        tests:
+          - accepted_values:
+              arguments:
+                values: ["customer", "agent"]

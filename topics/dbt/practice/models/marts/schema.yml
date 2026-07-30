@@ -1,0 +1,17 @@
+version: 2
+
+models:
+  - name: support_kpi_mart
+    description: "支持团队 KPI 汇总 mart（按类别）：工单量、解决时长、SLA 达标率。供报表与下游查询直接使用。"
+    columns:
+      - name: category
+        description: "工单类别"
+        tests:
+          - not_null
+          - unique
+      - name: total_tickets
+        description: "工单总量"
+        tests:
+          - not_null
+      - name: sla_compliance_rate
+        description: "SLA 达标率（0-1）"

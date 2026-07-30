@@ -21,3 +21,10 @@ courses/cs336/assignments/assignment*/
 # books/ 下为独立 clone 的书籍源码仓库，不入本库
 books/*/
 !books/notes/
+
+# dbt 练习项目产物
+topics/dbt/practice/target/
+topics/dbt/practice/dbt_packages/
+topics/dbt/practice/logs/
+*.duckdb
+*.duckdb.wal

@@ -1,0 +1,31 @@
+version: 2
+
+sources:
+  - name: raw
+    description: "seeds/ 目录下模拟业务系统导出的原始 CSV 数据"
+    schema: main
+    tables:
+      - name: raw_tickets
+        description: "工单事实表（原始）"
+        columns:
+          - name: ticket_id
+            description: "工单唯一 ID"
+            tests:
+              - not_null
+              - unique
+      - name: raw_customers
+        description: "客户维表（原始）"
+        columns:
+          - name: customer_id
+            description: "客户唯一 ID"
+            tests:
+              - not_null
+              - unique
+      - name: raw_ticket_comments
+        description: "工单评论表（原始）"
+        columns:
+          - name: comment_id
+            description: "评论唯一 ID"
+            tests:
+              - not_null
+              - unique

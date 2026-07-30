@@ -1,0 +1,12 @@
+version: 2
+
+models:
+  - name: int_ticket_activity_daily
+    description: "按天 + 类别聚合的工单活动中间层：含 P1 标记、SLA 违约标记、解决时长等业务加工字段。"
+    columns:
+      - name: activity_date
+        tests:
+          - not_null
+      - name: ticket_count
+        tests:
+          - not_null
